@@ -7,7 +7,8 @@ import {
 
 const CONFIG_STORAGE_KEY = "bde_staff_auto_config_v1";
 const SB_SETTINGS_KEY = "bde_staff_auto_sb_v1";
-const SB_PASSWORD_KEY = "bde_staff_auto_sb_pwd";
+const SB_PASSWORD_COOKIE = "bde_staff_auto_pwd";
+const SB_COOKIE_DAYS = 30;
 
 const state = {
   config: null,
@@ -57,21 +58,24 @@ const els = {
   closeSyncBtn: document.getElementById("close-sync-btn"),
   downloadJsonBtn: document.getElementById("download-json-btn"),
   importJsonInput: document.getElementById("import-json-input"),
-  publishBtn: document.getElementById("publish-btn"),
   sbForm: document.getElementById("sb-form"),
   sbUrl: document.getElementById("sb-url"),
   sbKey: document.getElementById("sb-key"),
   sbPassword: document.getElementById("sb-password"),
   sbFeedback: document.getElementById("sb-feedback"),
-  sbReloadBtn: document.getElementById("sb-reload-btn")
+  sbReloadBtn: document.getElementById("sb-reload-btn"),
+  sbLogoutBtn: document.getElementById("sb-logout-btn")
 };
+
+let autoPublishTimer = null;
+let publishQueue = Promise.resolve();
 
 function setStatus(text) {
   els.status.textContent = text;
   let tone = "ok";
-  if (/chec|erreur|hors ligne/i.test(text)) tone = "bad";
+  if (/chec|erreur|hors ligne|requis/i.test(text)) tone = "bad";
   else if (/\.\.\.$/.test(text)) tone = "busy";
-  else if (/local|navigateur/i.test(text)) tone = "idle";
+  else if (/local|navigateur|lecture|non publi/i.test(text)) tone = "idle";
   els.status.dataset.tone = tone;
 }
 
@@ -265,8 +269,7 @@ function renderMembers() {
       member.active = checkbox.checked;
       populateBusSelectors();
       renderMembers();
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
     });
 
     const span = document.createElement("span");
@@ -287,16 +290,14 @@ function renderMembers() {
       member.transport === "bus1" || member.transport === "bus2" ? member.transport : "car";
     transportSelect.addEventListener("change", async () => {
       member.transport = transportSelect.value;
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
     });
 
     const removeBtn = createRemoveButton(`Retirer ${member.name}`, async () => {
       state.config.members = state.config.members.filter((m) => m.id !== member.id);
       populateBusSelectors();
       renderMembers();
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
     });
 
     li.append(label, transportSelect, removeBtn);
@@ -329,15 +330,13 @@ function renderRoles() {
       const next = Math.max(1, Math.min(10, Number(countInput.value) || 1));
       role.countPerSlot = next;
       countInput.value = String(next);
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
     });
 
     const removeBtn = createRemoveButton(`Retirer le pôle ${role.name}`, async () => {
       state.config.roles = state.config.roles.filter((r) => r.id !== role.id);
       renderRoles();
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
     });
 
     li.append(nameSpan, countInput, removeBtn);
@@ -715,19 +714,39 @@ function getSupabaseSettings() {
   };
 }
 
-function getSessionPassword() {
+function getSavedPassword() {
   try {
-    return sessionStorage.getItem(SB_PASSWORD_KEY) || "";
+    const match = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith(`${SB_PASSWORD_COOKIE}=`));
+    if (match) return decodeURIComponent(match.slice(SB_PASSWORD_COOKIE.length + 1));
   } catch {
-    return "";
+    // Ignore cookie read errors.
+  }
+  return "";
+}
+
+function setSavedPassword(value) {
+  try {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    if (!value) {
+      document.cookie = `${SB_PASSWORD_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
+      return;
+    }
+    const maxAge = 60 * 60 * 24 * SB_COOKIE_DAYS;
+    document.cookie = `${SB_PASSWORD_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+  } catch {
+    // Ignore cookie write errors.
   }
 }
 
-function setSessionPassword(value) {
-  try {
-    sessionStorage.setItem(SB_PASSWORD_KEY, value);
-  } catch {
-    // Private mode: password will be asked again.
+function updateAuthUi() {
+  const loggedIn = Boolean(getSavedPassword());
+  if (els.openSyncBtn) {
+    els.openSyncBtn.textContent = loggedIn ? "Connecté BDE" : "Connexion BDE";
+  }
+  if (els.sbLogoutBtn) {
+    els.sbLogoutBtn.hidden = !loggedIn;
   }
 }
 
@@ -765,29 +784,51 @@ function openSyncDialog(message = "") {
   const sb = getSupabaseSettings();
   els.sbUrl.value = sb.url;
   els.sbKey.value = sb.anonKey;
-  els.sbPassword.value = getSessionPassword();
+  els.sbPassword.value = getSavedPassword();
   els.sbFeedback.textContent = message;
+  updateAuthUi();
   els.syncDialog.showModal();
   const firstEmpty = [els.sbUrl, els.sbKey, els.sbPassword].find((el) => !el.value);
   (firstEmpty ?? els.sbPassword).focus();
 }
 
-async function handlePublish() {
+function scheduleAutoPublish() {
   const sb = getSupabaseSettings();
-  const password = getSessionPassword();
-  if (!sb.url || !sb.anonKey || !password) {
-    openSyncDialog("Renseignez la connexion Supabase et le mot de passe BDE.");
+  const password = getSavedPassword();
+  if (!sb.url || !sb.anonKey) return;
+  if (!password) {
+    setStatus("Modifié en local (connexion requise)");
     return;
   }
-  setStatus("Publication...");
-  try {
-    await publishOnline(sb, password);
-    setStatus("Publié en ligne");
-    if (els.syncDialog.open) els.sbFeedback.textContent = "Planning publié en ligne.";
-  } catch (err) {
-    setStatus("Échec publication");
-    openSyncDialog(err.message);
-  }
+
+  clearTimeout(autoPublishTimer);
+  setStatus("Enregistrement...");
+  autoPublishTimer = setTimeout(() => {
+    publishQueue = publishQueue
+      .then(async () => {
+        const currentSb = getSupabaseSettings();
+        const currentPwd = getSavedPassword();
+        if (!currentSb.url || !currentSb.anonKey || !currentPwd) return;
+        await publishOnline(currentSb, currentPwd);
+        setStatus("Synchronisé en ligne");
+      })
+      .catch((err) => {
+        if (/mot de passe/i.test(err.message)) {
+          setSavedPassword("");
+          updateAuthUi();
+          setStatus("Mot de passe requis");
+          openSyncDialog(err.message);
+        } else {
+          setStatus("Échec synchronisation");
+        }
+      });
+  }, 400);
+}
+
+async function saveAndAutoPublish() {
+  runAndRenderSchedule();
+  await persistConfig();
+  scheduleAutoPublish();
 }
 
 function applyLoadedConfig() {
@@ -851,9 +892,8 @@ function wireEvents() {
     e.preventDefault();
     if (!validateSettingsForm()) return;
     syncSettingsFromForm();
-    await persistConfig();
     state.seed = Date.now();
-    runAndRenderSchedule();
+    await saveAndAutoPublish();
   });
 
   for (const input of els.settingsForm.querySelectorAll("input, select")) {
@@ -866,13 +906,13 @@ function wireEvents() {
       }
     });
     if (input.tagName === "SELECT") {
-      input.addEventListener("change", () => runAndRenderSchedule());
+      input.addEventListener("change", () => saveAndAutoPublish());
     }
   }
 
-  els.rerollBtn.addEventListener("click", () => {
+  els.rerollBtn.addEventListener("click", async () => {
     state.seed = Date.now() + Math.floor(Math.random() * 10000);
-    runAndRenderSchedule();
+    await saveAndAutoPublish();
   });
 
   if (els.memberFilter) {
@@ -903,8 +943,7 @@ function wireEvents() {
     els.newMemberName.value = "";
     populateBusSelectors();
     renderMembers();
-    await persistConfig();
-    runAndRenderSchedule();
+    await saveAndAutoPublish();
   });
 
   els.addRoleForm.addEventListener("submit", async (e) => {
@@ -925,14 +964,20 @@ function wireEvents() {
     els.newRoleName.value = "";
     els.newRoleCount.value = "1";
     renderRoles();
-    await persistConfig();
-    runAndRenderSchedule();
+    await saveAndAutoPublish();
   });
 
-  els.publishBtn.addEventListener("click", handlePublish);
   els.openSyncBtn.addEventListener("click", () => openSyncDialog());
   els.closeSyncBtn.addEventListener("click", () => els.syncDialog.close());
   els.downloadJsonBtn.addEventListener("click", downloadConfigJson);
+
+  els.sbLogoutBtn.addEventListener("click", () => {
+    setSavedPassword("");
+    els.sbPassword.value = "";
+    updateAuthUi();
+    setStatus("Mode lecture");
+    els.sbFeedback.textContent = "Déconnecté. Le planning reste visible en lecture seule.";
+  });
 
   els.importJsonInput.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
@@ -944,8 +989,7 @@ function wireEvents() {
       }
       state.config = parsed;
       applyLoadedConfig();
-      await persistConfig();
-      runAndRenderSchedule();
+      await saveAndAutoPublish();
       els.sbFeedback.textContent = "Configuration importée.";
     } catch (err) {
       els.sbFeedback.textContent = err.message;
@@ -978,9 +1022,21 @@ function wireEvents() {
     }
     els.sbUrl.value = url;
     safeWriteLocal(SB_SETTINGS_KEY, { url, anonKey });
-    setSessionPassword(password);
-    els.sbFeedback.textContent = "Publication en cours...";
-    await handlePublish();
+    els.sbFeedback.textContent = "Connexion et synchronisation...";
+    setStatus("Synchronisation...");
+    try {
+      await publishOnline({ url, anonKey }, password);
+      setSavedPassword(password);
+      updateAuthUi();
+      setStatus("Synchronisé en ligne");
+      els.sbFeedback.textContent = "Connecté. Chaque modification est maintenant enregistrée automatiquement.";
+      els.syncDialog.close();
+    } catch (err) {
+      setSavedPassword("");
+      updateAuthUi();
+      setStatus("Mot de passe requis");
+      els.sbFeedback.textContent = err.message;
+    }
   });
 }
 
@@ -1001,6 +1057,7 @@ function loadOnline(online) {
 }
 
 async function init() {
+  updateAuthUi();
   wireEvents();
   const local = safeReadLocal(CONFIG_STORAGE_KEY);
   const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";

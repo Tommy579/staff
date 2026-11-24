@@ -35,8 +35,7 @@
 
       <div class="header-actions">
         <span id="persistence-status" class="sync-pill" role="status" aria-live="polite" data-tone="busy">Chargement...</span>
-        <button id="open-sync-btn" type="button" class="btn btn-quiet btn-sm">Synchronisation</button>
-        <button id="publish-btn" type="button" class="btn btn-secondary btn-sm">Publier en ligne</button>
+        <button id="open-sync-btn" type="button" class="btn btn-secondary btn-sm">Connexion BDE</button>
       </div>
     </div>
   </header>
@@ -227,44 +226,52 @@
     </div>
   </footer>
 
-  <!-- Online sync modal (Supabase) -->
+  <!-- Online sync / auth modal (Supabase) -->
   <dialog id="sync-dialog" class="modal" closedby="any" aria-labelledby="sync-dialog-title">
     <div class="modal-head">
-      <h2 id="sync-dialog-title">Synchronisation en ligne</h2>
+      <h2 id="sync-dialog-title">Connexion BDE</h2>
       <button id="close-sync-btn" type="button" class="icon-btn" aria-label="Fermer" title="Fermer"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
     </div>
     <p class="hint modal-intro">
-      Les membres, les pôles et le planning publié sont partagés via Supabase. La lecture est publique, la publication requiert le mot de passe BDE.
+      La consultation du planning est libre pour tous les staffeurs. Connectez-vous une seule fois pour enregistrer automatiquement chaque modification en ligne.
     </p>
 
     <form id="sb-form" class="mt-4" novalidate>
       <div class="form-group">
         <div class="field">
-          <label for="sb-url">URL du projet Supabase</label>
-          <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false" aria-describedby="sb-url-hint" aria-invalid="false">
-          <span id="sb-url-hint" class="hint">URL racine du projet Supabase.</span>
-        </div>
-        <div class="field">
-          <label for="sb-key">Clé publique anon</label>
-          <input id="sb-key" name="anonKey" type="text" autocapitalize="none" spellcheck="false" aria-describedby="sb-key-hint" aria-invalid="false">
-          <span id="sb-key-hint" class="hint">Clé publique uniquement (jamais la clé service_role).</span>
-        </div>
-        <div class="field">
           <label for="sb-password">Mot de passe BDE</label>
           <input id="sb-password" name="password" type="password" autocomplete="current-password" aria-describedby="sb-password-hint" aria-invalid="false">
-          <span id="sb-password-hint" class="hint">Conservé uniquement durant cette session.</span>
+          <span id="sb-password-hint" class="hint">Mémorisé 30 jours dans un cookie sur ce navigateur.</span>
         </div>
-        <p id="sb-feedback" class="hint" role="status" aria-live="polite"></p>
+
+        <details class="advanced-details">
+          <summary>Paramètres Supabase et JSON</summary>
+          <div class="advanced-body">
+            <div class="field">
+              <label for="sb-url">URL du projet Supabase</label>
+              <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false" aria-describedby="sb-url-hint" aria-invalid="false">
+              <span id="sb-url-hint" class="hint">URL racine du projet Supabase.</span>
+            </div>
+            <div class="field">
+              <label for="sb-key">Clé publique anon</label>
+              <input id="sb-key" name="anonKey" type="text" autocapitalize="none" spellcheck="false" aria-describedby="sb-key-hint" aria-invalid="false">
+              <span id="sb-key-hint" class="hint">Clé publique uniquement (jamais service_role).</span>
+            </div>
+          </div>
+        </details>
+
+        <p id="sb-feedback" class="hint mt-4" role="status" aria-live="polite"></p>
         <div class="modal-actions">
-          <button id="sb-reload-btn" type="button" class="btn btn-quiet btn-sm">Recharger depuis en ligne</button>
-          <button type="submit" class="btn btn-primary btn-sm">Publier en ligne</button>
+          <button id="sb-logout-btn" type="button" class="btn btn-quiet btn-sm" hidden>Se déconnecter</button>
+          <button type="submit" class="btn btn-primary btn-sm">Se connecter et synchroniser</button>
         </div>
       </div>
     </form>
 
     <div class="modal-footer-actions">
-      <button id="download-json-btn" type="button" class="btn btn-quiet btn-sm">Télécharger config.json</button>
-      <label for="import-json-input" class="btn btn-quiet btn-sm">Importer un JSON</label>
+      <button id="sb-reload-btn" type="button" class="btn btn-quiet btn-sm">Recharger depuis en ligne</button>
+      <button id="download-json-btn" type="button" class="btn btn-quiet btn-sm">Télécharger JSON</button>
+      <label for="import-json-input" class="btn btn-quiet btn-sm">Importer JSON</label>
       <input id="import-json-input" type="file" accept="application/json" class="visually-hidden">
     </div>
   </dialog>
