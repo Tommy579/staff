@@ -92,7 +92,9 @@ function renderCurrentView() {
   pickerViewEl.hidden = false;
   listEl.replaceChildren();
 
-  const sorted = [...memberSummary].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  const sorted = [...memberSummary].sort((a, b) =>
+    a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
+  );
   for (const item of sorted) {
     const li = document.createElement("li");
     li.className = "individual-row";

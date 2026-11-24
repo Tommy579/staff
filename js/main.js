@@ -231,7 +231,9 @@ function syncSettingsFromForm() {
 }
 
 function populateBusSelectors() {
-  const active = state.config.members.filter((m) => m.active !== false);
+  const active = state.config.members
+    .filter((m) => m.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
   const selectors = [els.bus1Select1, els.bus1Select2, els.bus2Select1, els.bus2Select2];
 
   for (const sel of selectors) {
@@ -305,7 +307,9 @@ function renderMembers() {
     { value: "bus2", label: "Bus 2" }
   ];
 
-  for (const member of members) {
+  for (const member of [...members].sort((a, b) =>
+    a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
+  )) {
     const li = document.createElement("li");
     li.className = "roster-item";
 
