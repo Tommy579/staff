@@ -1,4 +1,9 @@
 import { generateSchedule } from "./scheduler.js";
+import {
+  normalizeSupabaseUrl,
+  isSupabaseProjectUrl,
+  supabaseErrorMessage
+} from "./supabase-url.js";
 
 const CONFIG_STORAGE_KEY = "bde_staff_auto_config_v1";
 const SB_SETTINGS_KEY = "bde_staff_auto_sb_v1";
@@ -526,7 +531,7 @@ function getSupabaseSettings() {
   const saved = safeReadLocal(SB_SETTINGS_KEY) ?? {};
   const fromRepo = state.config?.supabase ?? {};
   return {
-    url: (saved.url || fromRepo.url || "").replace(/\/+$/, ""),
+    url: normalizeSupabaseUrl(saved.url || fromRepo.url || ""),
     anonKey: saved.anonKey || fromRepo.anonKey || ""
   };
 }
@@ -558,7 +563,10 @@ async function fetchOnlineState({ url, anonKey }) {
   const res = await fetch(`${url}/rest/v1/bde_state?id=eq.main&select=config,schedule,updated_at`, {
     headers: sbHeaders(anonKey)
   });
-  if (!res.ok) throw new Error(`Lecture Supabase impossible (HTTP ${res.status}).`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(supabaseErrorMessage("Lecture Supabase impossible", res.status, body));
+  }
   const rows = await res.json();
   return rows[0] ?? null;
 }
@@ -571,7 +579,7 @@ async function publishOnline({ url, anonKey }, password) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Publication refusee (HTTP ${res.status}).`);
+    throw new Error(supabaseErrorMessage("Publication refusee", res.status, body));
   }
 }
 
@@ -715,7 +723,7 @@ function wireEvents() {
   });
 
   els.sbReloadBtn.addEventListener("click", async () => {
-    const sb = { url: els.sbUrl.value.trim().replace(/\/+$/, ""), anonKey: els.sbKey.value.trim() };
+    const sb = { url: normalizeSupabaseUrl(els.sbUrl.value), anonKey: els.sbKey.value.trim() };
     try {
       const online = await fetchOnlineState(sb);
       if (!online) throw new Error("Aucune donnee publiee pour l'instant.");
@@ -729,13 +737,14 @@ function wireEvents() {
 
   els.sbForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const url = els.sbUrl.value.trim().replace(/\/+$/, "");
+    const url = normalizeSupabaseUrl(els.sbUrl.value);
     const anonKey = els.sbKey.value.trim();
     const password = els.sbPassword.value;
-    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !anonKey || !password) {
+    if (!isSupabaseProjectUrl(url) || !anonKey || !password) {
       els.sbFeedback.textContent = "URL au format https://xxxx.supabase.co, cle anon et mot de passe requis.";
       return;
     }
+    els.sbUrl.value = url;
     safeWriteLocal(SB_SETTINGS_KEY, { url, anonKey });
     setSessionPassword(password);
     els.sbFeedback.textContent = "Publication en cours...";

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "association": "BDE Polytech Nice Sophia",
-  "supabase": { "url": "https://wqayghhkgbprvofojjoo.supabase.co/rest/v1/", "anonKey": "sb_publishable_0e3xM9OIJfMfRW04Lhnc5A_0Q8HI9aa" },
+  "supabase": { "url": "https://wqayghhkgbprvofojjoo.supabase.co", "anonKey": "sb_publishable_0e3xM9OIJfMfRW04Lhnc5A_0Q8HI9aa" },
   "settings": {
     "eventName": "Soiree Integration Polytech",
     "startTime": "22:00",

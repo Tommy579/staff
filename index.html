@@ -203,7 +203,8 @@
         <legend>Connexion Supabase</legend>
         <div class="field">
           <label for="sb-url">URL du projet Supabase</label>
-          <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false">
+          <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false" aria-describedby="sb-url-hint">
+          <span id="sb-url-hint" class="hint">URL du projet, sans /rest/v1 (ajoute automatiquement).</span>
         </div>
         <div class="field">
           <label for="sb-key">Cle publique anon</label>
