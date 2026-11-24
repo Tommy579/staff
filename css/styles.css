@@ -372,9 +372,13 @@
   /* ---------- Mise en page ---------- */
   .workspace-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
     align-items: start;
+  }
+
+  .sidebar {
+    min-width: 0;
   }
 
   @media (min-width: 1024px) {
@@ -397,6 +401,7 @@
 
   .panel,
   .sidebar-card {
+    min-width: 0;
     background-color: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -426,7 +431,7 @@
   /* ---------- Onglets (contrôle segmenté) ---------- */
   .tab-bar {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 2px;
     padding: 3px;
     background-color: var(--surface-2);
@@ -438,15 +443,17 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    min-width: 0;
     min-height: 32px;
-    padding: 0 0.5rem;
+    padding: 0 0.4rem;
     border: 0;
     border-radius: 6px;
     background: transparent;
     color: var(--text-muted);
     font-size: 0.8125rem;
     font-weight: 500;
+    white-space: nowrap;
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
   }
@@ -545,6 +552,8 @@
   input[type="password"],
   select {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: var(--control-h);
     padding: 0 0.7rem;
     border: 1px solid var(--border-strong);
@@ -1389,6 +1398,17 @@
 
     .tab-btn {
       min-height: 40px;
+      font-size: 0.78rem;
+      gap: 0.25rem;
+      padding: 0 0.3rem;
+    }
+
+    .form-row-times {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-row-times .field:last-child {
+      grid-column: 1 / -1;
     }
 
     .icon-btn {
