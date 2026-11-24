@@ -1338,9 +1338,10 @@
       grid-template-columns: 9.5rem minmax(0, 1fr);
       gap: 0.5rem;
       align-items: start;
-      padding-block: 0.3rem;
+      padding-block: 0.45rem;
       padding-inline: 0.75rem;
       border: 0;
+      border-block-start: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
     }
 
     .schedule-table tbody tr td:last-child {
@@ -1585,12 +1586,29 @@
       padding: 0 0.3rem;
     }
 
+    .form-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem;
+    }
+
     .form-row-times {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .form-row-times .field:last-child {
       grid-column: 1 / -1;
+    }
+
+    input[type="time"] {
+      min-height: 38px;
+      padding: 0 0.45rem;
+      font-size: 0.8125rem;
+    }
+
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      width: 14px;
+      padding: 0;
+      margin-inline-start: 0;
     }
 
     .icon-btn {
