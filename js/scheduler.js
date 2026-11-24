@@ -6,6 +6,18 @@
 const MINUTES_PER_DAY = 1440;
 
 /**
+ * Normalizes a member's transport mode.
+ * @param {string | undefined} value
+ * @returns {"car" | "bus1" | "bus2"}
+ */
+export function normalizeTransport(value) {
+  if (value === "bus1" || value === "bus2" || value === "car") {
+    return value;
+  }
+  return "car";
+}
+
+/**
  * Parses "HH:MM" into minutes since 00:00.
  * @param {string} hhmm
  * @returns {number}
@@ -178,6 +190,18 @@ export function generateSchedule(input) {
     }
   }
 
+  // Arrival blocking based on each member's declared transport mode.
+  // "car" means present from the start of the evening; "bus1" / "bus2" means blocked before that bus arrives.
+  const arrivalBlockedUntilByMember = new Map();
+  for (const member of activeMembers) {
+    const transport = normalizeTransport(member.transport);
+    if (transport === "bus1") {
+      arrivalBlockedUntilByMember.set(member.id, bus1Offset + busBufferMinutes);
+    } else if (transport === "bus2") {
+      arrivalBlockedUntilByMember.set(member.id, bus2Offset + busBufferMinutes);
+    }
+  }
+
   // Diagnostic checks before solving.
   const totalSeatsPerSlot = roles.reduce((sum, r) => sum + Number(r.countPerSlot), 0);
   if (activeMembers.length < totalSeatsPerSlot) {
@@ -191,13 +215,31 @@ export function generateSchedule(input) {
     );
   }
 
-  // Check if early slots (before bus arrivals) have enough unblocked members.
-  const earlySlotsBeforeBoth = slots.filter(
-    (s) => s.startOffset < bus1Offset + busBufferMinutes && s.startOffset < bus2Offset + busBufferMinutes
-  );
-  if (earlySlotsBeforeBoth.length > 0 && activeMembers.length - busStaffCount * 2 < totalSeatsPerSlot) {
+  // Check if any slot has fewer arrived/unblocked members than required seats.
+  const carCount = activeMembers.filter((m) => normalizeTransport(m.transport) === "car").length;
+  const bus1PassengerCount = activeMembers.filter((m) => normalizeTransport(m.transport) === "bus1").length;
+  const bus2PassengerCount = activeMembers.filter((m) => normalizeTransport(m.transport) === "bus2").length;
+  const extraBus1FromCar = Math.max(0, busStaffCount - bus1PassengerCount);
+  const extraBus2FromCar = Math.max(0, busStaffCount - bus2PassengerCount);
+
+  const conflictSlots = [];
+  for (const s of slots) {
+    const bus1Arrived = s.startOffset >= bus1Offset + busBufferMinutes;
+    const bus2Arrived = s.startOffset >= bus2Offset + busBufferMinutes;
+    let available = carCount;
+    if (bus1Arrived) available += bus1PassengerCount;
+    else available -= extraBus1FromCar;
+    if (bus2Arrived) available += bus2PassengerCount;
+    else available -= extraBus2FromCar;
+
+    if (available < totalSeatsPerSlot) {
+      conflictSlots.push({ label: s.label, available: Math.max(0, available) });
+    }
+  }
+  if (conflictSlots.length > 0 && activeMembers.length >= totalSeatsPerSlot) {
+    const first = conflictSlots[0];
     errors.push(
-      `Conflit avant l'arrivée des bus : ${busStaffCount * 2} personnes sont bloquées par les bus sur les premiers créneaux, il ne reste que ${Math.max(0, activeMembers.length - busStaffCount * 2)} personnes disponibles pour ${totalSeatsPerSlot} postes.`
+      `Conflit avant l'arrivée des bus (${conflictSlots.length} créneau(x), ex. ${first.label}) : seulement ${first.available} personne(s) arrivée(s) pour ${totalSeatsPerSlot} postes.`
     );
   }
 
@@ -211,21 +253,39 @@ export function generateSchedule(input) {
     const attemptBus2 = [...bus2Ids];
     const attemptUsedBus = new Set(usedBusIds);
 
-    const remainingPool = shuffleInPlace(
-      activeMembers.filter((m) => !attemptUsedBus.has(m.id)).map((m) => m.id),
+    const bus1Pool = shuffleInPlace(
+      activeMembers
+        .filter((m) => !attemptUsedBus.has(m.id) && normalizeTransport(m.transport) === "bus1")
+        .map((m) => m.id),
+      rng
+    );
+    const bus2Pool = shuffleInPlace(
+      activeMembers
+        .filter((m) => !attemptUsedBus.has(m.id) && normalizeTransport(m.transport) === "bus2")
+        .map((m) => m.id),
+      rng
+    );
+    const carPool = shuffleInPlace(
+      activeMembers
+        .filter((m) => !attemptUsedBus.has(m.id) && normalizeTransport(m.transport) === "car")
+        .map((m) => m.id),
       rng
     );
 
-    while (attemptBus1.length < busStaffCount && remainingPool.length > 0) {
-      const id = remainingPool.shift();
-      attemptBus1.push(id);
-      attemptUsedBus.add(id);
-    }
-    while (attemptBus2.length < busStaffCount && remainingPool.length > 0) {
-      const id = remainingPool.shift();
-      attemptBus2.push(id);
-      attemptUsedBus.add(id);
-    }
+    const pickFrom = (pools, target, needed) => {
+      for (const pool of pools) {
+        while (target.length < needed && pool.length > 0) {
+          const id = pool.shift();
+          if (!attemptUsedBus.has(id)) {
+            target.push(id);
+            attemptUsedBus.add(id);
+          }
+        }
+      }
+    };
+
+    pickFrom([bus1Pool, carPool, bus2Pool], attemptBus1, busStaffCount);
+    pickFrom([bus2Pool, carPool, bus1Pool], attemptBus2, busStaffCount);
 
     const busInfoByMember = new Map();
     for (const id of attemptBus1) {
@@ -240,6 +300,7 @@ export function generateSchedule(input) {
       roles,
       activeMembers,
       busInfoByMember,
+      arrivalBlockedUntilByMember,
       rng
     });
 
@@ -317,9 +378,11 @@ export function generateSchedule(input) {
         }
       }
     }
+    const transport = normalizeTransport(member.transport);
     return {
       id: member.id,
       name: member.name,
+      transport,
       busNumber: busInfo ? busInfo.busNumber : null,
       busArrivalTime: busInfo ? (busInfo.busNumber === 1 ? settings.bus1Arrival : settings.bus2Arrival) : null,
       shifts,
@@ -359,17 +422,20 @@ function isBetterSolution(a, b) {
 /**
  * Solves slot-role assignments with bounded backtracking and greedy fallback if infeasible.
  */
-function solveSlots({ slots, roles, activeMembers, busInfoByMember, rng }) {
+function solveSlots({ slots, roles, activeMembers, busInfoByMember, arrivalBlockedUntilByMember, rng }) {
   const memberIds = activeMembers.map((m) => m.id);
   const memberNoise = new Map(memberIds.map((id) => [id, rng()]));
+
+  function getBlockedUntil(memberId) {
+    const arrival = arrivalBlockedUntilByMember?.get(memberId) ?? -Infinity;
+    const bus = busInfoByMember.get(memberId)?.blockedUntil ?? -Infinity;
+    return Math.max(arrival, bus);
+  }
 
   // Build ordered list of seat requirements.
   // Order slots with fewer available candidates first (typically early slots blocked by buses), then chronologically.
   const slotMeta = slots.map((slot, slotIdx) => {
-    const availableCount = memberIds.filter((id) => {
-      const bus = busInfoByMember.get(id);
-      return !bus || slot.startOffset >= bus.blockedUntil;
-    }).length;
+    const availableCount = memberIds.filter((id) => slot.startOffset >= getBlockedUntil(id)).length;
     return { slotIdx, availableCount };
   });
 
@@ -411,8 +477,7 @@ function solveSlots({ slots, roles, activeMembers, busInfoByMember, rng }) {
     if (usedRolesByMember.get(memberId).has(roleId)) {
       return false;
     }
-    const bus = busInfoByMember.get(memberId);
-    if (bus && slots[slotIdx].startOffset < bus.blockedUntil) {
+    if (slots[slotIdx].startOffset < getBlockedUntil(memberId)) {
       return false;
     }
     return true;

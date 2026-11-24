@@ -736,6 +736,17 @@
     text-align: center;
   }
 
+  .transport-select {
+    width: auto !important;
+    min-width: 88px;
+    min-height: 30px !important;
+    padding: 0 1.45rem 0 0.5rem !important;
+    font-size: 0.75rem !important;
+    background-position: right 0.35rem center !important;
+    background-size: 12px !important;
+    flex-shrink: 0;
+  }
+
   /* ---------- Barre d'outils du planning ---------- */
   .results-toolbar {
     display: flex;
@@ -1387,6 +1398,10 @@
 
     .role-count-input {
       min-height: 40px !important;
+    }
+
+    .transport-select {
+      min-height: 38px !important;
     }
 
     .toolbar-actions {

@@ -74,4 +74,48 @@ assert.equal(result.schedule.length, 8, "22:00 to 04:00 with 45 min slots = 8 sl
 assert.equal(result.schedule[0].label, "22:00 - 22:45");
 assert.equal(result.schedule[7].label, "03:15 - 04:00");
 
-console.log("OK: All scheduler constraints verified (8 slots, 2 buses, 0 repeats, 0 early bus conflicts).");
+// 6. Check per-member transport modes ("car", "bus1", "bus2")
+const transportMembers = config.members.map((m, idx) => ({
+  ...m,
+  transport: idx < 3 ? "bus1" : idx < 6 ? "bus2" : "car"
+}));
+const bus1Travelers = new Set(transportMembers.filter((m) => m.transport === "bus1").map((m) => m.id));
+const bus2Travelers = new Set(transportMembers.filter((m) => m.transport === "bus2").map((m) => m.id));
+
+const tResult = generateSchedule({
+  settings: config.settings,
+  members: transportMembers,
+  roles: config.roles,
+  seed: 99
+});
+
+// Bus 1 staffers should come from bus1 travelers, Bus 2 staffers from bus2 travelers
+for (const m of tResult.buses[0].members) {
+  assert.ok(bus1Travelers.has(m.id), `Bus 1 staffer ${m.name} should come from bus1 travelers`);
+}
+for (const m of tResult.buses[1].members) {
+  assert.ok(bus2Travelers.has(m.id), `Bus 2 staffer ${m.name} should come from bus2 travelers`);
+}
+
+// No bus1 or bus2 traveler (even non-bus-staffers) can work before their bus arrives
+for (const slot of tResult.schedule) {
+  for (const role of tResult.roles) {
+    for (const member of slot.assignments[role.id]) {
+      if (!member) continue;
+      if (bus1Travelers.has(member.id)) {
+        assert.ok(
+          slot.startOffset >= tResult.buses[0].arrivalOffset,
+          `Bus 1 traveler ${member.name} assigned before Bus 1 arrival on ${slot.label}`
+        );
+      }
+      if (bus2Travelers.has(member.id)) {
+        assert.ok(
+          slot.startOffset >= tResult.buses[1].arrivalOffset,
+          `Bus 2 traveler ${member.name} assigned before Bus 2 arrival on ${slot.label}`
+        );
+      }
+    }
+  }
+}
+
+console.log("OK: All scheduler constraints verified (8 slots, 2 buses, 0 repeats, 0 early bus conflicts, per-member transport).");

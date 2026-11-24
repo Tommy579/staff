@@ -245,6 +245,12 @@ function renderMembers() {
   els.membersCount.textContent = `${activeCount}/${members.length}`;
   els.membersList.replaceChildren();
 
+  const transportOptions = [
+    { value: "car", label: "Voiture" },
+    { value: "bus1", label: "Bus 1" },
+    { value: "bus2", label: "Bus 2" }
+  ];
+
   for (const member of members) {
     const li = document.createElement("li");
     li.className = "roster-item";
@@ -268,6 +274,23 @@ function renderMembers() {
 
     label.append(checkbox, span);
 
+    const transportSelect = document.createElement("select");
+    transportSelect.className = "transport-select";
+    transportSelect.setAttribute("aria-label", `Moyen d'arrivée pour ${member.name}`);
+    for (const optDef of transportOptions) {
+      const opt = document.createElement("option");
+      opt.value = optDef.value;
+      opt.textContent = optDef.label;
+      transportSelect.appendChild(opt);
+    }
+    transportSelect.value =
+      member.transport === "bus1" || member.transport === "bus2" ? member.transport : "car";
+    transportSelect.addEventListener("change", async () => {
+      member.transport = transportSelect.value;
+      await persistConfig();
+      runAndRenderSchedule();
+    });
+
     const removeBtn = createRemoveButton(`Retirer ${member.name}`, async () => {
       state.config.members = state.config.members.filter((m) => m.id !== member.id);
       populateBusSelectors();
@@ -276,7 +299,7 @@ function renderMembers() {
       runAndRenderSchedule();
     });
 
-    li.append(label, removeBtn);
+    li.append(label, transportSelect, removeBtn);
     els.membersList.appendChild(li);
   }
 }
@@ -612,7 +635,21 @@ function renderScheduleResult(result) {
     if (item.busNumber) {
       const li = document.createElement("li");
       li.className = "summary-bus";
-      li.textContent = `Bus ${item.busNumber} · ${item.busArrivalTime}`;
+      li.textContent = `Staff Bus ${item.busNumber} · ${item.busArrivalTime}`;
+      list.appendChild(li);
+    } else if (item.transport === "bus1") {
+      const li = document.createElement("li");
+      li.className = "summary-bus";
+      li.textContent = `Arrivée Bus 1 · ${settings.bus1Arrival}`;
+      list.appendChild(li);
+    } else if (item.transport === "bus2") {
+      const li = document.createElement("li");
+      li.className = "summary-bus";
+      li.textContent = `Arrivée Bus 2 · ${settings.bus2Arrival}`;
+      list.appendChild(li);
+    } else {
+      const li = document.createElement("li");
+      li.textContent = `Voiture · dès ${settings.startTime}`;
       list.appendChild(li);
     }
     for (const sh of item.shifts) {
@@ -860,7 +897,8 @@ function wireEvents() {
     state.config.members.push({
       id: `m-${Date.now().toString(36)}`,
       name,
-      active: true
+      active: true,
+      transport: "car"
     });
     els.newMemberName.value = "";
     populateBusSelectors();
