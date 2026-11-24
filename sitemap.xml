@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://tommy579.github.io/staff-auto/</loc>
+    <loc>https://tommy579.github.io/staff/</loc>
+  </url>
+  <url>
+    <loc>https://tommy579.github.io/staff/global.html</loc>
+  </url>
+  <url>
+    <loc>https://tommy579.github.io/staff/individuel.html</loc>
   </url>
 </urlset>
