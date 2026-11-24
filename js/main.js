@@ -64,7 +64,11 @@ const els = {
   sbPassword: document.getElementById("sb-password"),
   sbFeedback: document.getElementById("sb-feedback"),
   sbReloadBtn: document.getElementById("sb-reload-btn"),
-  sbLogoutBtn: document.getElementById("sb-logout-btn")
+  sbLogoutBtn: document.getElementById("sb-logout-btn"),
+  loginForm: document.getElementById("login-form"),
+  loginPassword: document.getElementById("login-password"),
+  loginFeedback: document.getElementById("login-feedback"),
+  loginSubmitBtn: document.getElementById("login-submit-btn")
 };
 
 let autoPublishTimer = null;
@@ -742,6 +746,7 @@ function setSavedPassword(value) {
 
 function updateAuthUi() {
   const loggedIn = Boolean(getSavedPassword());
+  document.documentElement.dataset.auth = loggedIn ? "ok" : "locked";
   if (els.openSyncBtn) {
     els.openSyncBtn.textContent = loggedIn ? "Connecté BDE" : "Connexion BDE";
   }
@@ -768,15 +773,15 @@ async function fetchOnlineState({ url, anonKey }) {
   return rows[0] ?? null;
 }
 
-async function publishOnline({ url, anonKey }, password) {
+async function publishOnline({ url, anonKey }, password, payloadConfig = state.config, payloadSchedule = state.lastResult) {
   const res = await fetch(`${url}/rest/v1/rpc/save_bde_state`, {
     method: "POST",
     headers: sbHeaders(anonKey),
-    body: JSON.stringify({ p_password: password, p_config: state.config, p_schedule: state.lastResult })
+    body: JSON.stringify({ p_password: password, p_config: payloadConfig, p_schedule: payloadSchedule })
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(supabaseErrorMessage("Publication refusée", res.status, body));
+    throw new Error(supabaseErrorMessage("Connexion refusée", res.status, body));
   }
 }
 
@@ -974,10 +979,64 @@ function wireEvents() {
   els.sbLogoutBtn.addEventListener("click", () => {
     setSavedPassword("");
     els.sbPassword.value = "";
+    if (els.loginPassword) els.loginPassword.value = "";
+    if (els.loginFeedback) els.loginFeedback.textContent = "";
+    els.syncDialog.close();
     updateAuthUi();
-    setStatus("Mode lecture");
-    els.sbFeedback.textContent = "Déconnecté. Le planning reste visible en lecture seule.";
+    setStatus("Déconnecté");
   });
+
+  if (els.loginForm) {
+    els.loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const password = els.loginPassword.value;
+      if (!password) {
+        els.loginPassword.setAttribute("aria-invalid", "true");
+        els.loginFeedback.textContent = "Entrez le mot de passe BDE.";
+        els.loginPassword.focus();
+        return;
+      }
+      els.loginPassword.setAttribute("aria-invalid", "false");
+      els.loginSubmitBtn.disabled = true;
+      els.loginFeedback.textContent = "Vérification...";
+
+      try {
+        // Ensure we have base config before verifying against Supabase
+        if (!state.config) {
+          state.config = safeReadLocal(CONFIG_STORAGE_KEY) || (await fetchRepoConfig());
+        }
+        const sb = getSupabaseSettings();
+        if (!sb.url || !sb.anonKey) {
+          throw new Error("Configuration Supabase manquante.");
+        }
+
+        // Fetch existing online state first so logging in on a new device never overwrites published data
+        const online = await fetchOnlineState(sb).catch(() => null);
+        const cfgToCheck = online?.config ?? state.config;
+        const schedToCheck = online?.schedule ?? state.lastResult;
+
+        await publishOnline(sb, password, cfgToCheck, schedToCheck);
+        setSavedPassword(password);
+        updateAuthUi();
+        els.loginFeedback.textContent = "";
+
+        if (online) {
+          loadOnline(online);
+        } else {
+          applyLoadedConfig();
+          runAndRenderSchedule();
+          setStatus("Synchronisé en ligne");
+        }
+      } catch (err) {
+        setSavedPassword("");
+        updateAuthUi();
+        els.loginFeedback.textContent = err.message;
+        els.loginPassword.focus();
+      } finally {
+        els.loginSubmitBtn.disabled = false;
+      }
+    });
+  }
 
   els.importJsonInput.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
@@ -1059,39 +1118,51 @@ function loadOnline(online) {
 async function init() {
   updateAuthUi();
   wireEvents();
+
   const local = safeReadLocal(CONFIG_STORAGE_KEY);
   const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  try {
-    const repoConfig = await fetchRepoConfig();
-    state.config = isLocalhost ? repoConfig : local ?? repoConfig;
-    if (!state.config.supabase) state.config.supabase = repoConfig.supabase;
-    setStatus(isLocalhost ? "Local (config.json)" : "Prêt");
-  } catch {
-    if (!local) {
-      setStatus("Erreur config.json");
-      return;
-    }
+
+  // 1. Render immediately from local cache if available (0ms startup)
+  if (local) {
     state.config = local;
-    setStatus("Mode navigateur");
+    applyLoadedConfig();
+    runAndRenderSchedule();
+    setStatus("Synchronisation...");
+  }
+
+  // 2. Fetch repo config.json and Supabase state in parallel instead of sequentially
+  const repoPromise = fetchRepoConfig().catch(() => null);
+  const sbInitial = getSupabaseSettings();
+  const onlinePromise = sbInitial.url && sbInitial.anonKey ? fetchOnlineState(sbInitial).catch(() => null) : Promise.resolve(null);
+
+  const repoConfig = await repoPromise;
+  if (repoConfig) {
+    if (!state.config || isLocalhost) {
+      state.config = repoConfig;
+      if (!local || isLocalhost) {
+        applyLoadedConfig();
+        runAndRenderSchedule();
+      }
+    }
+    if (!state.config.supabase) state.config.supabase = repoConfig.supabase;
+  } else if (!local) {
+    setStatus("Erreur config.json");
+    return;
   }
 
   const sb = getSupabaseSettings();
   if (sb.url && sb.anonKey) {
-    setStatus("Synchronisation...");
-    try {
-      const online = await fetchOnlineState(sb);
-      if (online) {
-        loadOnline(online);
-        return;
-      }
-      setStatus("Local (rien en ligne)");
-    } catch {
-      setStatus("Hors ligne");
+    const online = await (sb.url === sbInitial.url && sb.anonKey === sbInitial.anonKey
+      ? onlinePromise
+      : fetchOnlineState(sb).catch(() => null));
+    if (online) {
+      loadOnline(online);
+      return;
     }
+    setStatus(isLocalhost ? "Local (config.json)" : "Hors ligne");
+  } else {
+    setStatus(isLocalhost ? "Local (config.json)" : "Prêt");
   }
-
-  applyLoadedConfig();
-  runAndRenderSchedule();
 }
 
 init();
