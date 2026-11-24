@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "association": "BDE Polytech Nice Sophia",
+  "supabase": { "url": "https://wqayghhkgbprvofojjoo.supabase.co/rest/v1/", "anonKey": "sb_publishable_0e3xM9OIJfMfRW04Lhnc5A_0Q8HI9aa" },
+  "settings": {
+    "eventName": "Soiree Integration Polytech",
+    "startTime": "22:00",
+    "endTime": "04:00",
+    "slotDuration": 45,
+    "bus1Arrival": "22:30",
+    "bus2Arrival": "23:15",
+    "busStaffCount": 2,
+    "busBufferMinutes": 0
+  },
+  "members": [
+    {
+      "id": "m-1",
+      "name": "Camille Laurent",
+      "active": true
+    },
+    {
+      "id": "m-2",
+      "name": "Lucas Moreau",
+      "active": true
+    },
+    {
+      "id": "m-3",
+      "name": "Ines Benali",
+      "active": true
+    },
+    {
+      "id": "m-4",
+      "name": "Theo Bernard",
+      "active": true
+    },
+    {
+      "id": "m-5",
+      "name": "Manon Petit",
+      "active": true
+    },
+    {
+      "id": "m-6",
+      "name": "Hugo Garnier",
+      "active": true
+    },
+    {
+      "id": "m-7",
+      "name": "Chloe Mercier",
+      "active": true
+    },
+    {
+      "id": "m-8",
+      "name": "Nathan Faure",
+      "active": true
+    },
+    {
+      "id": "m-9",
+      "name": "Lea Chevalier",
+      "active": true
+    },
+    {
+      "id": "m-10",
+      "name": "Enzo Girard",
+      "active": true
+    },
+    {
+      "id": "m-11",
+      "name": "Sarah Roux",
+      "active": true
+    },
+    {
+      "id": "m-12",
+      "name": "Baptiste Clement",
+      "active": true
+    },
+    {
+      "id": "m-13",
+      "name": "Juliette Andre",
+      "active": true
+    },
+    {
+      "id": "m-14",
+      "name": "Maxime Lefevre",
+      "active": true
+    },
+    {
+      "id": "m-15",
+      "name": "Clara Perrin",
+      "active": true
+    },
+    {
+      "id": "m-16",
+      "name": "Antoine Blanc",
+      "active": true
+    }
+  ],
+  "roles": [
+    {
+      "id": "r-bar",
+      "name": "Bar",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-entree",
+      "name": "Entree et bracelet",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-vestiaire",
+      "name": "Vestiaire",
+      "countPerSlot": 1
+    },
+    {
+      "id": "r-secu",
+      "name": "Prevention et salle",
+      "countPerSlot": 1
+    },
+    {
+      "id": "r-ravit",
+      "name": "Stock et glace",
+      "countPerSlot": 1
+    },
+    {
+      "id": "r-caisse",
+      "name": "Caisse et jetons",
+      "countPerSlot": 1
+    },
+    {
+      "id": "r-eco",
+      "name": "Ecocup et proprete",
+      "countPerSlot": 1
+    },
+    {
+      "id": "r-photo",
+      "name": "Stand photo et accueil",
+      "countPerSlot": 1
+    }
+  ]
+}

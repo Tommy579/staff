@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Auto BDE Polytech Nice Sophia</title>
+  <meta name="description" content="Robot de repartition des staffs en soiree pour le BDE Polytech Nice Sophia : gestion des deux bus, creneaux de 45 minutes et poles sans repetition.">
+  <meta property="og:title" content="Staff Auto BDE Polytech Nice Sophia">
+  <meta property="og:description" content="Repartition automatique des staffs de soiree BDE avec gestion des bus et persistance GitHub.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img class="brand-mark" src="./assets/favicon.svg" alt="Embleme Staff Auto BDE Polytech" width="44" height="44">
+        <div>
+          <h1 class="brand-title">Staff Auto BDE Polytech</h1>
+          <p class="brand-sub">Repartition de soiree, bus et creneaux sans doublon</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="persistence-status" class="sync-pill" role="status" aria-live="polite">Chargement...</span>
+        <button id="open-sync-btn" type="button" class="btn btn-secondary btn-sm">Synchronisation en ligne</button>
+        <button id="generate-header-btn" type="button" class="btn btn-primary">Generer le planning</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="workspace-grid">
+      <!-- Left column: configuration, members, roles -->
+      <div>
+        <section class="panel" aria-labelledby="config-heading">
+          <h2 id="config-heading" class="panel-title">Parametres de la soiree</h2>
+          <form id="settings-form" aria-labelledby="config-heading" novalidate>
+            <fieldset>
+              <legend>Horaires et duree</legend>
+              <div class="field">
+                <label for="event-name">Nom de la soiree</label>
+                <input id="event-name" name="eventName" type="text" required maxlength="80">
+                <span class="field-error" id="event-name-error" aria-live="polite"></span>
+              </div>
+              <div class="form-row">
+                <div class="field">
+                  <label for="start-time">Debut de soiree</label>
+                  <input id="start-time" name="startTime" type="time" required>
+                  <span class="field-error" id="start-time-error" aria-live="polite"></span>
+                </div>
+                <div class="field">
+                  <label for="end-time">Fin de soiree</label>
+                  <input id="end-time" name="endTime" type="time" required>
+                  <span class="field-error" id="end-time-error" aria-live="polite"></span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="slot-duration">Duree d'un staff (minutes)</label>
+                <input id="slot-duration" name="slotDuration" type="number" min="10" max="240" step="5" required aria-describedby="slot-duration-hint">
+                <span id="slot-duration-hint" class="hint">45 minutes par defaut, modifiable pour toute la soiree.</span>
+                <span class="field-error" id="slot-duration-error" aria-live="polite"></span>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Gestion des deux bus</legend>
+              <div class="form-row">
+                <div class="field">
+                  <label for="bus1-arrival">Arrivee Bus 1</label>
+                  <input id="bus1-arrival" name="bus1Arrival" type="time" required>
+                  <span class="field-error" id="bus1-arrival-error" aria-live="polite"></span>
+                </div>
+                <div class="field">
+                  <label for="bus2-arrival">Arrivee Bus 2</label>
+                  <input id="bus2-arrival" name="bus2Arrival" type="time" required>
+                  <span class="field-error" id="bus2-arrival-error" aria-live="polite"></span>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="field">
+                  <label for="bus-staff-count">Staffeurs par bus</label>
+                  <input id="bus-staff-count" name="busStaffCount" type="number" min="1" max="6" required>
+                </div>
+                <div class="field">
+                  <label for="bus-buffer">Battement apres arrivee (min)</label>
+                  <input id="bus-buffer" name="busBufferMinutes" type="number" min="0" max="90" step="5" required>
+                </div>
+              </div>
+              <div class="field">
+                <label for="bus1-select-1">Bus 1 (optionnel, sinon tirage auto)</label>
+                <div class="form-row">
+                  <select id="bus1-select-1" aria-label="Staffeur 1 du Bus 1"></select>
+                  <select id="bus1-select-2" aria-label="Staffeur 2 du Bus 1"></select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="bus2-select-1">Bus 2 (optionnel, sinon tirage auto)</label>
+                <div class="form-row">
+                  <select id="bus2-select-1" aria-label="Staffeur 1 du Bus 2"></select>
+                  <select id="bus2-select-2" aria-label="Staffeur 2 du Bus 2"></select>
+                </div>
+              </div>
+            </fieldset>
+
+            <button type="submit" class="btn btn-primary w-full">Generer le planning</button>
+          </form>
+        </section>
+
+        <section class="panel" aria-labelledby="members-heading">
+          <h2 id="members-heading" class="panel-title">Membres BDE (<span id="members-count">0</span>)</h2>
+          <form id="add-member-form" class="inline-add" novalidate>
+            <div class="field">
+              <label for="new-member-name">Ajouter un membre</label>
+              <input id="new-member-name" name="memberName" type="text" placeholder="Prenom Nom" required maxlength="60">
+            </div>
+            <button type="submit" class="btn btn-secondary">Ajouter</button>
+          </form>
+          <p class="hint">Decochez les absents du soir sans les supprimer de la liste persistante.</p>
+          <ul id="members-list" class="roster-list mt-4"></ul>
+        </section>
+
+        <section class="panel" aria-labelledby="roles-heading">
+          <h2 id="roles-heading" class="panel-title">Poles de staff (<span id="roles-count">0</span>)</h2>
+          <form id="add-role-form" class="inline-add-role" novalidate>
+            <div class="field">
+              <label for="new-role-name">Nom du staff</label>
+              <input id="new-role-name" name="roleName" type="text" placeholder="Ex : Vestiaire" required maxlength="50">
+            </div>
+            <div class="field">
+              <label for="new-role-count">Places</label>
+              <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Ajouter</button>
+          </form>
+          <ul id="roles-list" class="roster-list"></ul>
+        </section>
+      </div>
+
+      <!-- Right column: generated schedule and diagnostics -->
+      <div>
+        <section class="panel" aria-labelledby="schedule-heading">
+          <div class="results-toolbar">
+            <div>
+              <h2 id="schedule-heading" class="panel-title" style="margin-block-end: 0; border-block-end: 0; padding-block-end: 0;">Planning de la soiree</h2>
+              <p id="schedule-subtitle" class="hint"></p>
+            </div>
+            <div class="header-actions">
+              <button id="publish-btn" type="button" class="btn btn-secondary btn-sm">Publier en ligne</button>
+              <button id="reroll-btn" type="button" class="btn btn-secondary btn-sm">Nouveau tirage</button>
+              <button id="export-csv-btn" type="button" class="btn btn-quiet btn-sm">Exporter CSV</button>
+            </div>
+          </div>
+
+          <div id="diagnostics-container" class="alert-list" aria-live="polite"></div>
+
+          <div id="bus-strip" class="bus-strip"></div>
+
+          <div id="metrics-bar" class="metrics-bar"></div>
+
+          <div tabindex="0" role="region" aria-labelledby="schedule-caption" class="table-wrapper">
+            <table id="schedule-table" class="schedule-table">
+              <caption id="schedule-caption">Repartition des creneaux par pole de staff</caption>
+              <thead id="schedule-thead"></thead>
+              <tbody id="schedule-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="summary-heading">
+          <h2 id="summary-heading" class="panel-title">Charge par staffeur</h2>
+          <p class="hint">Verification de l'equite et de la regle d'unicite de pole par personne.</p>
+          <div id="member-summary-grid" class="summary-grid mt-4"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Staff Auto BDE Polytech Nice Sophia. Les donnees de base sont stockees dans <code>data/config.json</code>.</p>
+      <p>Aucune donnee personnelle sensible n'est envoyee vers un serveur tiers.</p>
+    </div>
+  </footer>
+
+  <!-- Online sync modal (Supabase) -->
+  <dialog id="sync-dialog" class="modal" aria-labelledby="sync-dialog-title">
+    <div class="modal-head">
+      <h2 id="sync-dialog-title">Synchronisation en ligne</h2>
+      <button id="close-sync-btn" type="button" class="btn btn-quiet btn-sm">Fermer</button>
+    </div>
+    <p class="hint">
+      Les membres, les poles et le planning publie sont partages via Supabase. Tout le monde peut consulter, seul le mot de passe BDE permet de publier (verifie cote serveur).
+    </p>
+
+    <form id="sb-form" class="mt-4" novalidate>
+      <fieldset>
+        <legend>Connexion Supabase</legend>
+        <div class="field">
+          <label for="sb-url">URL du projet Supabase</label>
+          <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="sb-key">Cle publique anon</label>
+          <input id="sb-key" name="anonKey" type="text" autocapitalize="none" spellcheck="false" aria-describedby="sb-key-hint">
+          <span id="sb-key-hint" class="hint">Uniquement la cle anon (publique). Jamais la cle service_role.</span>
+        </div>
+        <div class="field">
+          <label for="sb-password">Mot de passe BDE</label>
+          <input id="sb-password" name="password" type="password" autocomplete="current-password" aria-describedby="sb-password-hint">
+          <span id="sb-password-hint" class="hint">Garde seulement pendant cette session du navigateur.</span>
+        </div>
+        <p id="sb-feedback" class="hint" role="status" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button id="sb-reload-btn" type="button" class="btn btn-quiet btn-sm">Recharger depuis en ligne</button>
+          <button type="submit" class="btn btn-primary btn-sm">Publier en ligne</button>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="header-actions mt-4">
+      <button id="download-json-btn" type="button" class="btn btn-quiet btn-sm">Telecharger config.json</button>
+      <label for="import-json-input" class="btn btn-quiet btn-sm" style="margin: 0;">Importer un JSON</label>
+      <input id="import-json-input" type="file" accept="application/json" class="visually-hidden">
+    </div>
+  </dialog>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
