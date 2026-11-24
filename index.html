@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Staff Auto : BDE Polytech Nice Sophia</title>
-  <meta name="description" content="Outil de répartition automatique des staffs en soirée pour le BDE Polytech Nice Sophia : gestion des deux bus, créneaux de 45 minutes et pôles sans répétition.">
+  <meta name="description" content="Consultez le planning global, votre planning individuel ou modifiez la configuration des staffs BDE Polytech Nice Sophia.">
   <meta property="og:title" content="Staff Auto : BDE Polytech Nice Sophia">
-  <meta property="og:description" content="Répartition automatique des staffs de soirée BDE avec gestion des bus et synchronisation en ligne.">
+  <meta property="og:description" content="Consultation des plannings et gestion des staffs de soirée BDE Polytech Nice Sophia.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="./assets/Logo%20BDE.png">
   <meta name="twitter:card" content="summary">
@@ -21,269 +21,24 @@
   <link rel="preconnect" href="https://wqayghhkgbprvofojjoo.supabase.co" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/styles.css">
-  <script>
-    if (!document.cookie.split("; ").some(function (c) {
-      return c.indexOf("bde_staff_auto_pwd=") === 0 && c.length > "bde_staff_auto_pwd=".length;
-    })) {
-      location.replace("./login.html");
-    }
-  </script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">
-        <img class="brand-mark" src="./assets/logo-bde.svg" alt="Logo BDE Polytech Nice Sophia" width="38" height="38">
-        <div class="brand-copy">
-          <h1 class="brand-title">Staff Auto</h1>
-          <span class="brand-sep" aria-hidden="true">/</span>
-          <p class="brand-sub">BDE Polytech Nice Sophia</p>
+  <main class="login-gate">
+    <section class="home-card" aria-labelledby="home-title">
+      <div class="login-brand">
+        <img class="brand-mark" src="./assets/logo-bde.svg" alt="Logo BDE Polytech Nice Sophia" width="44" height="44">
+        <div>
+          <h1 id="home-title" class="login-title">Staff Auto</h1>
+          <p class="hint">BDE Polytech Nice Sophia</p>
         </div>
       </div>
 
-      <div class="header-actions">
-        <span id="persistence-status" class="sync-pill" role="status" aria-live="polite" data-tone="busy">Chargement...</span>
-        <button id="open-sync-btn" type="button" class="btn btn-secondary btn-sm">Connexion BDE</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-    <div class="workspace-grid">
-      <!-- Left sidebar: unified, tabbed configuration -->
-      <aside class="sidebar" aria-label="Configuration du planning">
-        <div class="sidebar-card">
-          <div class="tab-bar" role="tablist" aria-label="Sections de configuration">
-            <button type="button" role="tab" id="tab-btn-settings" aria-selected="true" aria-controls="tab-panel-settings" class="tab-btn">
-              Soirée
-            </button>
-            <button type="button" role="tab" id="tab-btn-members" aria-selected="false" aria-controls="tab-panel-members" class="tab-btn" tabindex="-1">
-              Membres <span id="members-count" class="tab-badge">0</span>
-            </button>
-            <button type="button" role="tab" id="tab-btn-roles" aria-selected="false" aria-controls="tab-panel-roles" class="tab-btn" tabindex="-1">
-              Pôles <span id="roles-count" class="tab-badge">0</span>
-            </button>
-          </div>
-
-          <!-- Panel 1: Event & Buses -->
-          <section id="tab-panel-settings" role="tabpanel" aria-labelledby="tab-btn-settings" class="tab-panel">
-            <h2 id="config-heading" class="visually-hidden">Paramètres de la soirée</h2>
-            <form id="settings-form" aria-labelledby="config-heading" novalidate>
-              <div class="form-group">
-                <div class="field">
-                  <label for="event-name">Nom de la soirée</label>
-                  <input id="event-name" name="eventName" type="text" required maxlength="80" data-error="event-name-error" aria-invalid="false">
-                  <span class="field-error" id="event-name-error">Indiquez un nom de soirée.</span>
-                </div>
-
-                <div class="form-row form-row-times">
-                  <div class="field">
-                    <label for="start-time">Début</label>
-                    <input id="start-time" name="startTime" type="time" required data-error="start-time-error" aria-invalid="false">
-                    <span class="field-error" id="start-time-error">Heure de début requise.</span>
-                  </div>
-                  <div class="field">
-                    <label for="end-time">Fin</label>
-                    <input id="end-time" name="endTime" type="time" required data-error="end-time-error" aria-invalid="false">
-                    <span class="field-error" id="end-time-error">Heure de fin requise.</span>
-                  </div>
-                  <div class="field">
-                    <label for="slot-duration" title="Durée d'un créneau en minutes">Créneau</label>
-                    <input id="slot-duration" name="slotDuration" type="number" min="10" max="240" step="5" required data-error="slot-duration-error" aria-invalid="false">
-                    <span class="field-error" id="slot-duration-error">Entre 10 et 240 min.</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <span class="group-label">Arrivée des navettes</span>
-                <div class="form-row">
-                  <div class="field">
-                    <label for="bus1-arrival">Arrivée Bus 1</label>
-                    <input id="bus1-arrival" name="bus1Arrival" type="time" required data-error="bus1-arrival-error" aria-invalid="false">
-                    <span class="field-error" id="bus1-arrival-error">Heure Bus 1 requise.</span>
-                  </div>
-                  <div class="field">
-                    <label for="bus2-arrival">Arrivée Bus 2</label>
-                    <input id="bus2-arrival" name="bus2Arrival" type="time" required data-error="bus2-arrival-error" aria-invalid="false">
-                    <span class="field-error" id="bus2-arrival-error">Heure Bus 2 requise.</span>
-                  </div>
-                </div>
-
-                <details class="advanced-details">
-                  <summary>Options avancées</summary>
-                  <div class="advanced-body">
-                    <div class="form-row">
-                      <div class="field">
-                        <label for="bus-staff-count">Staffeurs / bus</label>
-                        <input id="bus-staff-count" name="busStaffCount" type="number" min="1" max="6" required aria-invalid="false">
-                      </div>
-                      <div class="field">
-                        <label for="bus-buffer">Battement (min)</label>
-                        <input id="bus-buffer" name="busBufferMinutes" type="number" min="0" max="90" step="5" required aria-invalid="false">
-                      </div>
-                    </div>
-                    <div class="field">
-                      <label for="bus1-select-1">Attribution manuelle Bus 1</label>
-                      <div class="form-row">
-                        <select id="bus1-select-1" aria-label="Staffeur 1 du Bus 1" aria-invalid="false"></select>
-                        <select id="bus1-select-2" aria-label="Staffeur 2 du Bus 1" aria-invalid="false"></select>
-                      </div>
-                    </div>
-                    <div class="field">
-                      <label for="bus2-select-1">Attribution manuelle Bus 2</label>
-                      <div class="form-row">
-                        <select id="bus2-select-1" aria-label="Staffeur 1 du Bus 2" aria-invalid="false"></select>
-                        <select id="bus2-select-2" aria-label="Staffeur 2 du Bus 2" aria-invalid="false"></select>
-                      </div>
-                    </div>
-                  </div>
-                </details>
-              </div>
-
-              <button id="generate-header-btn" type="submit" class="btn btn-secondary w-full">Appliquer les horaires</button>
-            </form>
-          </section>
-
-          <!-- Panel 2: Members -->
-          <section id="tab-panel-members" role="tabpanel" aria-labelledby="tab-btn-members" class="tab-panel" hidden>
-            <h2 id="members-heading" class="visually-hidden">Membres BDE</h2>
-            <form id="add-member-form" class="inline-add" novalidate>
-              <div class="field">
-                <label for="new-member-name" class="visually-hidden">Ajouter un membre</label>
-                <input id="new-member-name" name="memberName" type="text" placeholder="Ajouter un prénom et nom..." required maxlength="60" aria-invalid="false">
-              </div>
-              <button type="submit" class="btn btn-secondary">Ajouter</button>
-            </form>
-            <p class="hint">Décochez les absents et choisissez le moyen d'arrivée (voiture = dès le début).</p>
-            <ul id="members-list" class="roster-list"></ul>
-          </section>
-
-          <!-- Panel 3: Roles -->
-          <section id="tab-panel-roles" role="tabpanel" aria-labelledby="tab-btn-roles" class="tab-panel" hidden>
-            <h2 id="roles-heading" class="visually-hidden">Pôles de staff</h2>
-            <form id="add-role-form" class="inline-add-role" novalidate>
-              <div class="field">
-                <label for="new-role-name" class="visually-hidden">Nom du pôle</label>
-                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau pôle (ex. Vestiaire)" required maxlength="50" aria-invalid="false">
-              </div>
-              <div class="field">
-                <label for="new-role-count" class="visually-hidden">Nombre de places</label>
-                <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places par créneau" aria-invalid="false">
-              </div>
-              <button type="submit" class="btn btn-secondary">Ajouter</button>
-            </form>
-            <p class="hint">Nombre de staffeurs requis par créneau pour chaque pôle.</p>
-            <ul id="roles-list" class="roster-list"></ul>
-          </section>
-        </div>
-      </aside>
-
-      <!-- Main content: Schedule, buses, and member workload -->
-      <div class="main-column">
-        <section class="panel" aria-labelledby="schedule-heading">
-          <div class="results-toolbar">
-            <div class="results-heading">
-              <h2 id="schedule-heading" class="panel-title">Planning</h2>
-              <p id="schedule-subtitle" class="hint"></p>
-            </div>
-            <div class="toolbar-actions">
-              <div class="filter-box">
-                <label for="member-filter" class="visually-hidden">Filtrer par staffeur</label>
-                <select id="member-filter" class="filter-select" aria-label="Filtrer ou surligner un staffeur">
-                  <option value="">Tous les staffeurs</option>
-                </select>
-              </div>
-              <button id="export-xlsx-btn" type="button" class="btn btn-quiet btn-sm">Exporter Excel</button>
-              <button id="reroll-btn" type="button" class="btn btn-primary btn-sm">Nouveau tirage</button>
-            </div>
-          </div>
-
-          <div id="diagnostics-container" class="alert-list" aria-live="polite"></div>
-
-          <!-- Compact overview bar combining buses and key metrics -->
-          <div class="overview-strip">
-            <div id="bus-strip" class="bus-strip" aria-label="Équipes bus"></div>
-            <div id="metrics-bar" class="metrics-bar" aria-label="Indicateurs du planning"></div>
-          </div>
-
-          <div tabindex="0" role="region" aria-labelledby="schedule-caption" class="table-wrapper">
-            <table id="schedule-table" class="schedule-table">
-              <caption id="schedule-caption" class="visually-hidden">Répartition des créneaux par pôle de staff</caption>
-              <thead id="schedule-thead"></thead>
-              <tbody id="schedule-tbody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="panel" aria-labelledby="summary-heading">
-          <div class="section-head">
-            <h2 id="summary-heading" class="panel-title">Répartition par staffeur</h2>
-            <p class="hint">Cliquez sur un membre pour surligner ses créneaux.</p>
-          </div>
-          <div id="member-summary-grid" class="summary-grid"></div>
-        </section>
-      </div>
-    </div>
+      <nav class="home-actions" aria-label="Accès aux vues du planning">
+        <a href="./global.html" class="btn btn-primary home-btn">Planning global</a>
+        <a href="./individuel.html" class="btn btn-secondary home-btn">Planning individuel</a>
+        <a href="./config.html" class="btn btn-quiet home-btn home-btn-config">Modification des paramètres</a>
+      </nav>
+    </section>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>Staff Auto · BDE Polytech Nice Sophia</p>
-      <p>Configuration dans <code>data/config.json</code>. Aucune donnée sensible transmise à des tiers.</p>
-    </div>
-  </footer>
-
-  <!-- Online sync / auth modal (Supabase) -->
-  <dialog id="sync-dialog" class="modal" closedby="any" aria-labelledby="sync-dialog-title">
-    <div class="modal-head">
-      <h2 id="sync-dialog-title">Connexion BDE</h2>
-      <button id="close-sync-btn" type="button" class="icon-btn" aria-label="Fermer" title="Fermer"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-    </div>
-    <p class="hint modal-intro">
-      La consultation du planning est libre pour tous les staffeurs. Connectez-vous une seule fois pour enregistrer automatiquement chaque modification en ligne.
-    </p>
-
-    <form id="sb-form" class="mt-4" novalidate>
-      <div class="form-group">
-        <div class="field">
-          <label for="sb-password">Mot de passe BDE</label>
-          <input id="sb-password" name="password" type="password" autocomplete="current-password" aria-describedby="sb-password-hint" aria-invalid="false">
-          <span id="sb-password-hint" class="hint">Mémorisé 30 jours dans un cookie sur ce navigateur.</span>
-        </div>
-
-        <details class="advanced-details">
-          <summary>Paramètres Supabase et JSON</summary>
-          <div class="advanced-body">
-            <div class="field">
-              <label for="sb-url">URL du projet Supabase</label>
-              <input id="sb-url" name="url" type="text" placeholder="https://xxxx.supabase.co" autocapitalize="none" spellcheck="false" aria-describedby="sb-url-hint" aria-invalid="false">
-              <span id="sb-url-hint" class="hint">URL racine du projet Supabase.</span>
-            </div>
-            <div class="field">
-              <label for="sb-key">Clé publique anon</label>
-              <input id="sb-key" name="anonKey" type="text" autocapitalize="none" spellcheck="false" aria-describedby="sb-key-hint" aria-invalid="false">
-              <span id="sb-key-hint" class="hint">Clé publique uniquement (jamais service_role).</span>
-            </div>
-          </div>
-        </details>
-
-        <p id="sb-feedback" class="hint mt-4" role="status" aria-live="polite"></p>
-        <div class="modal-actions">
-          <button id="sb-logout-btn" type="button" class="btn btn-quiet btn-sm" hidden>Se déconnecter</button>
-          <button type="submit" class="btn btn-primary btn-sm">Se connecter et synchroniser</button>
-        </div>
-      </div>
-    </form>
-
-    <div class="modal-footer-actions">
-      <button id="sb-reload-btn" type="button" class="btn btn-quiet btn-sm">Recharger depuis en ligne</button>
-      <button id="download-json-btn" type="button" class="btn btn-quiet btn-sm">Télécharger JSON</button>
-      <label for="import-json-input" class="btn btn-quiet btn-sm">Importer JSON</label>
-      <input id="import-json-input" type="file" accept="application/json" class="visually-hidden">
-    </div>
-  </dialog>
-
-  <script type="module" src="./js/main.js"></script>
 </body>
 </html>

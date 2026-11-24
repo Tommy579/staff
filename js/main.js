@@ -465,7 +465,7 @@ function runAndRenderSchedule() {
     els.metricsBar.replaceChildren();
     els.scheduleThead.replaceChildren();
     els.scheduleTbody.replaceChildren();
-    els.summaryGrid.replaceChildren();
+    if (els.summaryGrid) els.summaryGrid.replaceChildren();
   }
 }
 
@@ -602,76 +602,9 @@ function renderScheduleResult(result) {
     els.scheduleTbody.appendChild(tr);
   }
 
-  // Member summary
-  els.summaryGrid.replaceChildren();
-  const sortedSummary = [...memberSummary].sort(
-    (a, b) => b.totalDuties - a.totalDuties || a.name.localeCompare(b.name)
-  );
-  for (const item of sortedSummary) {
-    const card = document.createElement("article");
-    card.className = "summary-card";
-    card.dataset.memberId = item.id;
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `Filtrer les créneaux de ${item.name}`);
-    if (state.highlightedMemberId && state.highlightedMemberId === item.id) {
-      card.classList.add("is-highlighted");
-    }
-    card.addEventListener("click", () => setHighlightedMember(item.id));
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        setHighlightedMember(item.id);
-      }
-    });
-
-    const head = document.createElement("div");
-    head.className = "summary-card-head";
-    const nameEl = document.createElement("span");
-    nameEl.className = "summary-name";
-    nameEl.textContent = item.name;
-    const countEl = document.createElement("span");
-    countEl.className = "summary-count";
-    countEl.textContent = `${item.totalDuties}`;
-    countEl.title = `${item.totalDuties} affectation(s)`;
-    head.append(nameEl, countEl);
-
-    const list = document.createElement("ul");
-    list.className = "summary-shifts";
-    if (item.busNumber) {
-      const li = document.createElement("li");
-      li.className = "summary-bus";
-      li.textContent = `Staff Bus ${item.busNumber} · ${item.busArrivalTime}`;
-      list.appendChild(li);
-    } else if (item.transport === "bus1") {
-      const li = document.createElement("li");
-      li.className = "summary-bus";
-      li.textContent = `Arrivée Bus 1 · ${settings.bus1Arrival}`;
-      list.appendChild(li);
-    } else if (item.transport === "bus2") {
-      const li = document.createElement("li");
-      li.className = "summary-bus";
-      li.textContent = `Arrivée Bus 2 · ${settings.bus2Arrival}`;
-      list.appendChild(li);
-    } else {
-      const li = document.createElement("li");
-      li.textContent = `Voiture · dès ${settings.startTime}`;
-      list.appendChild(li);
-    }
-    for (const sh of item.shifts) {
-      const li = document.createElement("li");
-      li.textContent = `${sh.slotLabel} · ${sh.roleName}`;
-      list.appendChild(li);
-    }
-    if (!item.busNumber && item.shifts.length === 0) {
-      const li = document.createElement("li");
-      li.className = "summary-none";
-      li.textContent = "Aucun créneau";
-      list.appendChild(li);
-    }
-
-    card.append(head, list);
-    els.summaryGrid.appendChild(card);
+  // Member summary (optional, removed on config.html)
+  if (els.summaryGrid) {
+    els.summaryGrid.replaceChildren();
   }
 }
 

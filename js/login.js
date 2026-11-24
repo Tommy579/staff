@@ -122,7 +122,7 @@ form.addEventListener("submit", async (e) => {
       }
     }
     setSavedPassword(password);
-    location.replace("./index.html");
+    location.replace("./config.html");
   } catch (err) {
     feedback.textContent = err.message;
     passwordInput.focus();

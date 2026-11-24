@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planning global : Staff Auto BDE Polytech Nice Sophia</title>
+  <meta name="description" content="Planning global des staffs de soirée BDE Polytech Nice Sophia en lecture seule.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F6F6F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0E11" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" href="./assets/logo-bde.svg?v=2">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png?v=2">
+  <link rel="apple-touch-icon" href="./assets/favicon-192.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://wqayghhkgbprvofojjoo.supabase.co" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <a href="./index.html" class="brand-link" aria-label="Retour à l'accueil">
+          <img class="brand-mark" src="./assets/logo-bde.svg" alt="Logo BDE Polytech Nice Sophia" width="36" height="36">
+        </a>
+        <div class="brand-copy">
+          <h1 class="brand-title">Planning global</h1>
+          <span class="brand-sep" aria-hidden="true">/</span>
+          <p id="schedule-subtitle" class="brand-sub">Chargement...</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="readonly-status" class="sync-pill" role="status" aria-live="polite" data-tone="busy">Chargement...</span>
+        <a href="./individuel.html" class="btn btn-quiet btn-sm">Mon planning</a>
+        <a href="./index.html" class="btn btn-secondary btn-sm">Accueil</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel" aria-labelledby="global-heading">
+      <h2 id="global-heading" class="visually-hidden">Planning complet de la soirée</h2>
+      <div id="bus-strip" class="bus-strip mb-strip" aria-label="Équipes bus"></div>
+      <div tabindex="0" role="region" aria-labelledby="schedule-caption" class="table-wrapper">
+        <table id="schedule-table" class="schedule-table">
+          <caption id="schedule-caption" class="visually-hidden">Répartition des créneaux par pôle de staff</caption>
+          <thead id="schedule-thead"></thead>
+          <tbody id="schedule-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Staff Auto · BDE Polytech Nice Sophia</p>
+      <p id="last-updated-note">Actualisation automatique active.</p>
+    </div>
+  </footer>
+
+  <script type="module" src="./js/global.js"></script>
+</body>
+</html>
