@@ -68,6 +68,39 @@ const els = {
 
 function setStatus(text) {
   els.status.textContent = text;
+  let tone = "ok";
+  if (/chec|erreur|hors ligne/i.test(text)) tone = "bad";
+  else if (/\.\.\.$/.test(text)) tone = "busy";
+  else if (/local|navigateur/i.test(text)) tone = "idle";
+  els.status.dataset.tone = tone;
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function createCloseIcon() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", "M4 4l8 8M12 4l-8 8");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.6");
+  path.setAttribute("stroke-linecap", "round");
+  svg.appendChild(path);
+  return svg;
+}
+
+function createRemoveButton(label, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "icon-btn roster-remove";
+  btn.setAttribute("aria-label", label);
+  btn.title = label;
+  btn.appendChild(createCloseIcon());
+  btn.addEventListener("click", onClick);
+  return btn;
 }
 
 function safeReadLocal(key) {
@@ -235,12 +268,7 @@ function renderMembers() {
 
     label.append(checkbox, span);
 
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "btn btn-quiet btn-sm roster-remove";
-    removeBtn.textContent = "Retirer";
-    removeBtn.setAttribute("aria-label", `Retirer ${member.name}`);
-    removeBtn.addEventListener("click", async () => {
+    const removeBtn = createRemoveButton(`Retirer ${member.name}`, async () => {
       state.config.members = state.config.members.filter((m) => m.id !== member.id);
       populateBusSelectors();
       renderMembers();
@@ -263,9 +291,8 @@ function renderRoles() {
     li.className = "roster-item";
 
     const nameSpan = document.createElement("span");
+    nameSpan.className = "roster-name";
     nameSpan.textContent = role.name;
-    nameSpan.style.flex = "1";
-    nameSpan.style.fontWeight = "500";
 
     const countInput = document.createElement("input");
     countInput.type = "number";
@@ -283,12 +310,7 @@ function renderRoles() {
       runAndRenderSchedule();
     });
 
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "btn btn-quiet btn-sm roster-remove";
-    removeBtn.textContent = "Retirer";
-    removeBtn.setAttribute("aria-label", `Retirer le pôle ${role.name}`);
-    removeBtn.addEventListener("click", async () => {
+    const removeBtn = createRemoveButton(`Retirer le pôle ${role.name}`, async () => {
       state.config.roles = state.config.roles.filter((r) => r.id !== role.id);
       renderRoles();
       await persistConfig();
@@ -421,6 +443,7 @@ function runAndRenderSchedule() {
 function renderScheduleResult(result) {
   const { settings, roles, buses, schedule, memberSummary, stats, warnings, errors } = result;
   els.scheduleSubtitle.textContent = `${settings.eventName} · ${settings.startTime} – ${settings.endTime} · créneaux de ${settings.slotDuration} min`;
+  const totalSlots = schedule.length;
 
   for (const err of errors) {
     els.diagnostics.appendChild(renderAlert("error", err));
@@ -441,8 +464,9 @@ function renderScheduleResult(result) {
     title.textContent = bus.label;
     const time = document.createElement("span");
     time.className = "bus-time";
-    const unlockInfo = settings.busBufferMinutes > 0 ? ` +${settings.busBufferMinutes}m` : "";
-    time.textContent = `Arrivée ${bus.arrivalTime}${unlockInfo}`;
+    const unlockInfo = settings.busBufferMinutes > 0 ? ` +${settings.busBufferMinutes} min` : "";
+    time.textContent = `${bus.arrivalTime}${unlockInfo}`;
+    time.title = `Arrivée à ${bus.arrivalTime}`;
     head.append(title, time);
 
     const list = document.createElement("div");
@@ -464,15 +488,17 @@ function renderScheduleResult(result) {
   // Metrics bar
   els.metricsBar.replaceChildren();
   const metricItems = [
-    ["Créneaux", String(stats.totalSlots)],
-    ["Postes", `${stats.filledSeats}/${stats.totalSeats}`],
-    ["Écart max", `${stats.spread} cr.`],
-    ["Enchaînements", String(stats.backToBackCount)]
+    ["Postes pourvus", `${stats.filledSeats}/${stats.totalSeats}`, stats.filledSeats < stats.totalSeats ? "bad" : ""],
+    ["Créneaux", String(stats.totalSlots ?? totalSlots), ""],
+    ["Écart max", `${stats.spread}`, ""],
+    ["Enchaînements", String(stats.backToBackCount), stats.backToBackCount > 0 ? "warn" : ""]
   ];
-  for (const [label, val] of metricItems) {
+  for (const [label, val, tone] of metricItems) {
     const item = document.createElement("div");
     item.className = "metric-item";
+    if (tone) item.dataset.tone = tone;
     const labelSpan = document.createElement("span");
+    labelSpan.className = "metric-label";
     labelSpan.textContent = label;
     const strong = document.createElement("span");
     strong.className = "metric-val";
@@ -507,11 +533,19 @@ function renderScheduleResult(result) {
     const tr = document.createElement("tr");
     const rowTh = document.createElement("th");
     rowTh.scope = "row";
-    rowTh.textContent = slot.label;
+    const [slotStart, slotEnd] = slot.label.split(" - ");
+    const startEl = document.createElement("span");
+    startEl.className = "slot-start";
+    startEl.textContent = slotStart;
+    const endEl = document.createElement("span");
+    endEl.className = "slot-end";
+    endEl.textContent = slotEnd ? `– ${slotEnd}` : "";
+    rowTh.setAttribute("aria-label", slot.label);
+    rowTh.append(startEl, endEl);
     if (slot.isPartial) {
       const tag = document.createElement("span");
       tag.className = "slot-partial-tag";
-      tag.textContent = `${slot.duration}m`;
+      tag.textContent = `${slot.duration} min`;
       rowTh.appendChild(tag);
     }
     tr.appendChild(rowTh);
@@ -570,15 +604,15 @@ function renderScheduleResult(result) {
     const countEl = document.createElement("span");
     countEl.className = "summary-count";
     countEl.textContent = `${item.totalDuties}`;
+    countEl.title = `${item.totalDuties} affectation(s)`;
     head.append(nameEl, countEl);
 
     const list = document.createElement("ul");
     list.className = "summary-shifts";
     if (item.busNumber) {
       const li = document.createElement("li");
-      li.textContent = `Bus ${item.busNumber} (${item.busArrivalTime})`;
-      li.style.fontWeight = "600";
-      li.style.color = "var(--primary)";
+      li.className = "summary-bus";
+      li.textContent = `Bus ${item.busNumber} · ${item.busArrivalTime}`;
       list.appendChild(li);
     }
     for (const sh of item.shifts) {
@@ -588,6 +622,7 @@ function renderScheduleResult(result) {
     }
     if (!item.busNumber && item.shifts.length === 0) {
       const li = document.createElement("li");
+      li.className = "summary-none";
       li.textContent = "Aucun créneau";
       list.appendChild(li);
     }

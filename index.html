@@ -9,17 +9,20 @@
   <meta property="og:description" content="Répartition automatique des staffs de soirée BDE avec gestion des bus et synchronisation en ligne.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F6F6F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0E11" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <img class="brand-mark" src="./assets/favicon.svg" alt="Emblème Staff Auto BDE Polytech" width="32" height="32">
+        <img class="brand-mark" src="./assets/favicon.svg" alt="" width="28" height="28">
         <div class="brand-copy">
           <h1 class="brand-title">Staff Auto</h1>
           <span class="brand-sep" aria-hidden="true">/</span>
@@ -28,7 +31,7 @@
       </div>
 
       <div class="header-actions">
-        <span id="persistence-status" class="sync-pill" role="status" aria-live="polite">Chargement...</span>
+        <span id="persistence-status" class="sync-pill" role="status" aria-live="polite" data-tone="busy">Chargement...</span>
         <button id="open-sync-btn" type="button" class="btn btn-quiet btn-sm">Synchronisation</button>
         <button id="publish-btn" type="button" class="btn btn-secondary btn-sm">Publier en ligne</button>
       </div>
@@ -63,7 +66,7 @@
                   <span class="field-error" id="event-name-error">Indiquez un nom de soirée.</span>
                 </div>
 
-                <div class="form-row">
+                <div class="form-row form-row-times">
                   <div class="field">
                     <label for="start-time">Début</label>
                     <input id="start-time" name="startTime" type="time" required data-error="start-time-error" aria-invalid="false">
@@ -75,7 +78,7 @@
                     <span class="field-error" id="end-time-error">Heure de fin requise.</span>
                   </div>
                   <div class="field">
-                    <label for="slot-duration">Créneau (min)</label>
+                    <label for="slot-duration" title="Durée d'un créneau en minutes">Créneau</label>
                     <input id="slot-duration" name="slotDuration" type="number" min="10" max="240" step="5" required data-error="slot-duration-error" aria-invalid="false">
                     <span class="field-error" id="slot-duration-error">Entre 10 et 240 min.</span>
                   </div>
@@ -98,7 +101,7 @@
                 </div>
 
                 <details class="advanced-details">
-                  <summary>Options avancées des bus</summary>
+                  <summary>Options avancées</summary>
                   <div class="advanced-body">
                     <div class="form-row">
                       <div class="field">
@@ -140,7 +143,7 @@
                 <label for="new-member-name" class="visually-hidden">Ajouter un membre</label>
                 <input id="new-member-name" name="memberName" type="text" placeholder="Ajouter un prénom et nom..." required maxlength="60" aria-invalid="false">
               </div>
-              <button type="submit" class="btn btn-secondary btn-sm">Ajouter</button>
+              <button type="submit" class="btn btn-secondary">Ajouter</button>
             </form>
             <p class="hint">Décochez les absents du soir sans les retirer de la liste.</p>
             <ul id="members-list" class="roster-list"></ul>
@@ -158,7 +161,7 @@
                 <label for="new-role-count" class="visually-hidden">Nombre de places</label>
                 <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places par créneau" aria-invalid="false">
               </div>
-              <button type="submit" class="btn btn-secondary btn-sm">Ajouter</button>
+              <button type="submit" class="btn btn-secondary">Ajouter</button>
             </form>
             <p class="hint">Nombre de staffeurs requis par créneau pour chaque pôle.</p>
             <ul id="roles-list" class="roster-list"></ul>
@@ -171,7 +174,7 @@
         <section class="panel" aria-labelledby="schedule-heading">
           <div class="results-toolbar">
             <div class="results-heading">
-              <h2 id="schedule-heading" class="panel-title">Planning de la soirée</h2>
+              <h2 id="schedule-heading" class="panel-title">Planning</h2>
               <p id="schedule-subtitle" class="hint"></p>
             </div>
             <div class="toolbar-actions">
@@ -205,10 +208,8 @@
 
         <section class="panel" aria-labelledby="summary-heading">
           <div class="section-head">
-            <div>
-              <h2 id="summary-heading" class="panel-title">Répartition par staffeur</h2>
-              <p class="hint">Cliquez sur un membre pour mettre ses créneaux en évidence dans le planning.</p>
-            </div>
+            <h2 id="summary-heading" class="panel-title">Répartition par staffeur</h2>
+            <p class="hint">Cliquez sur un membre pour surligner ses créneaux.</p>
           </div>
           <div id="member-summary-grid" class="summary-grid"></div>
         </section>
@@ -218,8 +219,8 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>Staff Auto, BDE Polytech Nice Sophia. Configuration locale dans <code>data/config.json</code>.</p>
-      <p>Aucune donnée personnelle sensible n'est transmise à des services tiers.</p>
+      <p>Staff Auto · BDE Polytech Nice Sophia</p>
+      <p>Configuration dans <code>data/config.json</code>. Aucune donnée sensible transmise à des tiers.</p>
     </div>
   </footer>
 
@@ -227,9 +228,9 @@
   <dialog id="sync-dialog" class="modal" closedby="any" aria-labelledby="sync-dialog-title">
     <div class="modal-head">
       <h2 id="sync-dialog-title">Synchronisation en ligne</h2>
-      <button id="close-sync-btn" type="button" class="btn btn-quiet btn-sm">Fermer</button>
+      <button id="close-sync-btn" type="button" class="icon-btn" aria-label="Fermer" title="Fermer"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
     </div>
-    <p class="hint">
+    <p class="hint modal-intro">
       Les membres, les pôles et le planning publié sont partagés via Supabase. La lecture est publique, la publication requiert le mot de passe BDE.
     </p>
 

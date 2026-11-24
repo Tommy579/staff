@@ -92,7 +92,7 @@ export function buildTimeSlots(startTime, endTime, slotDuration) {
   const duration = Number(slotDuration);
 
   if (!Number.isInteger(duration) || duration < 10 || duration > 240) {
-    throw new Error("La duree d'un staff doit etre comprise entre 10 et 240 minutes.");
+    throw new Error("La durée d'un staff doit être comprise entre 10 et 240 minutes.");
   }
 
   const slots = [];
@@ -133,7 +133,7 @@ export function generateSchedule(input) {
   const roles = (input?.roles ?? []).filter((r) => r && r.name?.trim() && Number(r.countPerSlot) > 0);
 
   if (roles.length === 0) {
-    throw new Error("Ajoutez au moins un pole de staff avec au moins 1 personne par creneau.");
+    throw new Error("Ajoutez au moins un pôle de staff avec au moins 1 personne par créneau.");
   }
 
   const busStaffCount = Math.max(1, Number(settings.busStaffCount ?? 2));
@@ -153,7 +153,7 @@ export function generateSchedule(input) {
   if (totalDuration % Number(settings.slotDuration ?? 45) !== 0) {
     const last = slots[slots.length - 1];
     warnings.push(
-      `La duree totale (${totalDuration} min) n'est pas divisible par ${settings.slotDuration} min. Le dernier creneau (${last.label}) dure ${last.duration} min.`
+      `La durée totale (${totalDuration} min) n'est pas divisible par ${settings.slotDuration} min. Le dernier créneau (${last.label}) dure ${last.duration} min.`
     );
   }
 
@@ -182,7 +182,7 @@ export function generateSchedule(input) {
   const totalSeatsPerSlot = roles.reduce((sum, r) => sum + Number(r.countPerSlot), 0);
   if (activeMembers.length < totalSeatsPerSlot) {
     errors.push(
-      `Effectif insuffisant : chaque creneau demande ${totalSeatsPerSlot} staffeurs mais seuls ${activeMembers.length} membres sont actifs.`
+      `Effectif insuffisant : chaque créneau demande ${totalSeatsPerSlot} staffeurs mais seuls ${activeMembers.length} membres sont actifs.`
     );
   }
   if (activeMembers.length < busStaffCount * 2) {
@@ -197,7 +197,7 @@ export function generateSchedule(input) {
   );
   if (earlySlotsBeforeBoth.length > 0 && activeMembers.length - busStaffCount * 2 < totalSeatsPerSlot) {
     errors.push(
-      `Conflit avant l'arrivee des bus : ${busStaffCount * 2} personnes sont bloquees par les bus sur les premiers creneaux, il ne reste que ${Math.max(0, activeMembers.length - busStaffCount * 2)} personnes disponibles pour ${totalSeatsPerSlot} postes.`
+      `Conflit avant l'arrivée des bus : ${busStaffCount * 2} personnes sont bloquées par les bus sur les premiers créneaux, il ne reste que ${Math.max(0, activeMembers.length - busStaffCount * 2)} personnes disponibles pour ${totalSeatsPerSlot} postes.`
     );
   }
 
@@ -291,13 +291,13 @@ export function generateSchedule(input) {
 
   if (bestResult.unfilledCount > 0) {
     warnings.push(
-      `${bestResult.unfilledCount} poste(s) n'ont pas pu etre pourvus sans enfreindre la regle de non-repetition ou le blocage bus. Ajoutez des membres actifs ou des poles de staff.`
+      `${bestResult.unfilledCount} poste(s) n'ont pas pu être pourvus sans enfreindre la règle de non-répétition ou le blocage bus. Ajoutez des membres actifs ou des pôles de staff.`
     );
   }
 
   if (bestResult.backToBackCount > 0) {
     warnings.push(
-      `${bestResult.backToBackCount} enchainement(s) de deux creneaux consecutifs pour un meme staffeur n'ont pas pu etre evites faute d'effectif.`
+      `${bestResult.backToBackCount} enchaînement(s) de deux créneaux consécutifs pour un même staffeur n'ont pas pu être évités faute d'effectif.`
     );
   }
 
