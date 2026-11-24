@@ -16,6 +16,12 @@ function setSavedPassword(value) {
   document.cookie = `${SB_PASSWORD_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
 }
 
+function timeoutSignal(ms) {
+  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
 function sbHeaders(anonKey) {
   const headers = { apikey: anonKey, "Content-Type": "application/json" };
   if (anonKey.startsWith("eyJ")) headers.Authorization = `Bearer ${anonKey}`;
@@ -32,7 +38,7 @@ async function getSupabaseConfig() {
 
   let repoConfig = null;
   try {
-    const res = await fetch(`./data/config.json?t=${Date.now()}`);
+    const res = await fetch("./data/config.json", { signal: timeoutSignal(6000) });
     if (res.ok) repoConfig = await res.json();
   } catch {
     // Ignore fetch error if localStorage already has config.
@@ -78,7 +84,8 @@ form.addEventListener("submit", async (e) => {
     let online = null;
     try {
       const getRes = await fetch(`${url}/rest/v1/bde_state?id=eq.main&select=config,schedule,updated_at`, {
-        headers: sbHeaders(anonKey)
+        headers: sbHeaders(anonKey),
+        signal: timeoutSignal(8000)
       });
       if (getRes.ok) {
         const rows = await getRes.json();
@@ -94,6 +101,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch(`${url}/rest/v1/rpc/save_bde_state`, {
       method: "POST",
       headers: sbHeaders(anonKey),
+      signal: timeoutSignal(10000),
       body: JSON.stringify({
         p_password: password,
         p_config: payloadConfig,
@@ -106,6 +114,13 @@ form.addEventListener("submit", async (e) => {
       throw new Error(supabaseErrorMessage("Connexion refusée", res.status, body));
     }
 
+    if (online?.config) {
+      try {
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(online.config));
+      } catch {
+        // Ignore storage quota errors.
+      }
+    }
     setSavedPassword(password);
     location.replace("./index.html");
   } catch (err) {

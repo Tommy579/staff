@@ -125,8 +125,14 @@ function safeWriteLocal(key, value) {
   }
 }
 
+function timeoutSignal(ms) {
+  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
 async function fetchRepoConfig() {
-  const res = await fetch(`./data/config.json?t=${Date.now()}`);
+  const res = await fetch("./data/config.json", { signal: timeoutSignal(6000) });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
@@ -783,7 +789,8 @@ function sbHeaders(anonKey) {
 
 async function fetchOnlineState({ url, anonKey }) {
   const res = await fetch(`${url}/rest/v1/bde_state?id=eq.main&select=config,schedule,updated_at`, {
-    headers: sbHeaders(anonKey)
+    headers: sbHeaders(anonKey),
+    signal: timeoutSignal(8000)
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -797,6 +804,7 @@ async function publishOnline({ url, anonKey }, password, payloadConfig = state.c
   const res = await fetch(`${url}/rest/v1/rpc/save_bde_state`, {
     method: "POST",
     headers: sbHeaders(anonKey),
+    signal: timeoutSignal(10000),
     body: JSON.stringify({ p_password: password, p_config: payloadConfig, p_schedule: payloadSchedule })
   });
   if (!res.ok) {
