@@ -13,7 +13,8 @@ const state = {
   config: null,
   lastResult: null,
   seed: Date.now(),
-  serverWritable: false
+  serverWritable: false,
+  highlightedMemberId: ""
 };
 
 const els = {
@@ -34,6 +35,7 @@ const els = {
   generateHeaderBtn: document.getElementById("generate-header-btn"),
   rerollBtn: document.getElementById("reroll-btn"),
   exportCsvBtn: document.getElementById("export-csv-btn"),
+  memberFilter: document.getElementById("member-filter"),
   addMemberForm: document.getElementById("add-member-form"),
   newMemberName: document.getElementById("new-member-name"),
   membersList: document.getElementById("members-list"),
@@ -105,14 +107,14 @@ async function persistConfig() {
       });
       if (res.ok) {
         state.serverWritable = true;
-        setStatus("Sauvegarde dans data/config.json");
+        setStatus("Sauvegardé (config.json)");
         return;
       }
     } catch {
       // Fallback to localStorage only.
     }
   }
-  setStatus("Sauvegarde locale navigateur");
+  setStatus("Sauvegarde locale");
 }
 
 function populateSettingsForm() {
@@ -150,7 +152,7 @@ function populateBusSelectors() {
     sel.replaceChildren();
     const autoOpt = document.createElement("option");
     autoOpt.value = "";
-    autoOpt.textContent = "Tirage automatique";
+    autoOpt.textContent = "Tirage auto";
     sel.appendChild(autoOpt);
 
     for (const member of active) {
@@ -163,6 +165,44 @@ function populateBusSelectors() {
     if (previous && active.some((m) => m.id === previous)) {
       sel.value = previous;
     }
+  }
+
+  // Also update member highlight filter in toolbar
+  if (els.memberFilter) {
+    const prevFilter = els.memberFilter.value;
+    els.memberFilter.replaceChildren();
+    const allOpt = document.createElement("option");
+    allOpt.value = "";
+    allOpt.textContent = "Tous les staffeurs";
+    els.memberFilter.appendChild(allOpt);
+
+    for (const member of active) {
+      const opt = document.createElement("option");
+      opt.value = member.id;
+      opt.textContent = member.name;
+      els.memberFilter.appendChild(opt);
+    }
+    if (prevFilter && active.some((m) => m.id === prevFilter)) {
+      els.memberFilter.value = prevFilter;
+    } else {
+      setHighlightedMember("");
+    }
+  }
+}
+
+function setHighlightedMember(memberId) {
+  const next = state.highlightedMemberId === memberId ? "" : memberId;
+  state.highlightedMemberId = next;
+  if (els.memberFilter && els.memberFilter.value !== next) {
+    els.memberFilter.value = next;
+  }
+  if (next) {
+    document.body.setAttribute("data-highlight-member", next);
+  } else {
+    document.body.removeAttribute("data-highlight-member");
+  }
+  for (const el of document.querySelectorAll("[data-member-id]")) {
+    el.classList.toggle("is-highlighted", Boolean(next && el.dataset.memberId === next));
   }
 }
 
@@ -197,7 +237,7 @@ function renderMembers() {
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.className = "btn btn-quiet btn-sm";
+    removeBtn.className = "btn btn-quiet btn-sm roster-remove";
     removeBtn.textContent = "Retirer";
     removeBtn.setAttribute("aria-label", `Retirer ${member.name}`);
     removeBtn.addEventListener("click", async () => {
@@ -225,7 +265,7 @@ function renderRoles() {
     const nameSpan = document.createElement("span");
     nameSpan.textContent = role.name;
     nameSpan.style.flex = "1";
-    nameSpan.style.fontWeight = "600";
+    nameSpan.style.fontWeight = "500";
 
     const countInput = document.createElement("input");
     countInput.type = "number";
@@ -233,7 +273,8 @@ function renderRoles() {
     countInput.max = "10";
     countInput.value = String(role.countPerSlot);
     countInput.className = "role-count-input";
-    countInput.setAttribute("aria-label", `Places par creneau pour ${role.name}`);
+    countInput.setAttribute("aria-label", `Places par créneau pour ${role.name}`);
+    countInput.setAttribute("aria-invalid", "false");
     countInput.addEventListener("change", async () => {
       const next = Math.max(1, Math.min(10, Number(countInput.value) || 1));
       role.countPerSlot = next;
@@ -244,9 +285,9 @@ function renderRoles() {
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.className = "btn btn-quiet btn-sm";
+    removeBtn.className = "btn btn-quiet btn-sm roster-remove";
     removeBtn.textContent = "Retirer";
-    removeBtn.setAttribute("aria-label", `Retirer le pole ${role.name}`);
+    removeBtn.setAttribute("aria-label", `Retirer le pôle ${role.name}`);
     removeBtn.addEventListener("click", async () => {
       state.config.roles = state.config.roles.filter((r) => r.id !== role.id);
       renderRoles();
@@ -259,26 +300,65 @@ function renderRoles() {
   }
 }
 
+// Accessible error synchronization (modern-web-guidance: accessible-error-announcement)
+const linkError = (el, shown) => {
+  const errorId = el.dataset?.error;
+  if (!errorId) return;
+  const ids = (el.getAttribute("aria-describedby") || "")
+    .split(/\s+/)
+    .filter((id) => id && id !== errorId);
+  if (shown) ids.push(errorId);
+  if (ids.length) el.setAttribute("aria-describedby", ids.join(" "));
+  else el.removeAttribute("aria-describedby");
+};
+
+const announcer = document.createElement("div");
+announcer.setAttribute("aria-live", "polite");
+announcer.classList.add("visually-hidden");
+document.body.append(announcer);
+let announceTimer;
+
+function syncFieldValidity(el, forceInvalid = false, shouldAnnounce = false) {
+  if (!el.matches?.("input, select, textarea")) return;
+  const isInvalid = forceInvalid || !el.validity.valid;
+  if (isInvalid) {
+    el.setAttribute("aria-invalid", "true");
+    el.classList.add("user-invalid-fallback");
+    linkError(el, true);
+    if (shouldAnnounce && el.dataset?.error) {
+      const errNode = document.getElementById(el.dataset.error);
+      if (errNode) {
+        clearTimeout(announceTimer);
+        announcer.textContent = "";
+        announceTimer = setTimeout(() => {
+          announcer.textContent = errNode.textContent.trim();
+        }, 350);
+      }
+    }
+  } else {
+    el.setAttribute("aria-invalid", "false");
+    el.classList.remove("user-invalid-fallback");
+    linkError(el, false);
+  }
+}
+
 function validateSettingsForm() {
   let firstInvalid = null;
   const fields = [
-    { input: els.eventName, errId: "event-name-error", msg: "Indiquez un nom de soiree." },
-    { input: els.startTime, errId: "start-time-error", msg: "Indiquez une heure de debut." },
-    { input: els.endTime, errId: "end-time-error", msg: "Indiquez une heure de fin." },
-    { input: els.slotDuration, errId: "slot-duration-error", msg: "Duree entre 10 et 240 minutes." },
-    { input: els.bus1Arrival, errId: "bus1-arrival-error", msg: "Indiquez l'heure d'arrivee du Bus 1." },
-    { input: els.bus2Arrival, errId: "bus2-arrival-error", msg: "Indiquez l'heure d'arrivee du Bus 2." }
+    els.eventName,
+    els.startTime,
+    els.endTime,
+    els.slotDuration,
+    els.bus1Arrival,
+    els.bus2Arrival
   ];
 
-  for (const item of fields) {
-    const errEl = document.getElementById(item.errId);
-    if (!item.input.checkValidity()) {
-      item.input.setAttribute("aria-invalid", "true");
-      if (errEl) errEl.textContent = item.msg;
-      if (!firstInvalid) firstInvalid = item.input;
+  for (const input of fields) {
+    if (!input.checkValidity()) {
+      syncFieldValidity(input, true, false);
+      if (!firstInvalid) firstInvalid = input;
     } else {
-      item.input.removeAttribute("aria-invalid");
-      if (errEl) errEl.textContent = "";
+      syncFieldValidity(input, false, false);
     }
   }
 
@@ -294,6 +374,19 @@ function renderAlert(type, message) {
   div.className = `alert ${type === "error" ? "alert-error" : "alert-warn"}`;
   div.textContent = message;
   return div;
+}
+
+function createMemberChip(member, extraClass = "") {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = `member-chip ${extraClass}`.trim();
+  chip.textContent = member.name;
+  chip.dataset.memberId = member.id;
+  if (state.highlightedMemberId && state.highlightedMemberId === member.id) {
+    chip.classList.add("is-highlighted");
+  }
+  chip.addEventListener("click", () => setHighlightedMember(member.id));
+  return chip;
 }
 
 function runAndRenderSchedule() {
@@ -327,7 +420,7 @@ function runAndRenderSchedule() {
 
 function renderScheduleResult(result) {
   const { settings, roles, buses, schedule, memberSummary, stats, warnings, errors } = result;
-  els.scheduleSubtitle.textContent = `${settings.eventName} : de ${settings.startTime} a ${settings.endTime} (creneaux de ${settings.slotDuration} min)`;
+  els.scheduleSubtitle.textContent = `${settings.eventName} · ${settings.startTime} – ${settings.endTime} · créneaux de ${settings.slotDuration} min`;
 
   for (const err of errors) {
     els.diagnostics.appendChild(renderAlert("error", err));
@@ -336,7 +429,7 @@ function renderScheduleResult(result) {
     els.diagnostics.appendChild(renderAlert("warn", warn));
   }
 
-  // Render bus cards
+  // Render compact bus cards
   els.busStrip.replaceChildren();
   for (const bus of buses) {
     const card = document.createElement("div");
@@ -348,16 +441,14 @@ function renderScheduleResult(result) {
     title.textContent = bus.label;
     const time = document.createElement("span");
     time.className = "bus-time";
-    time.textContent = `Arrivee ${bus.arrivalTime}`;
+    const unlockInfo = settings.busBufferMinutes > 0 ? ` +${settings.busBufferMinutes}m` : "";
+    time.textContent = `Arrivée ${bus.arrivalTime}${unlockInfo}`;
     head.append(title, time);
 
     const list = document.createElement("div");
     list.className = "bus-staff-list";
     for (const member of bus.members) {
-      const chip = document.createElement("span");
-      chip.className = "member-chip member-chip-bus";
-      chip.textContent = member.name;
-      list.appendChild(chip);
+      list.appendChild(createMemberChip(member, "member-chip-bus"));
     }
     if (bus.members.length < settings.busStaffCount) {
       const missing = document.createElement("span");
@@ -366,31 +457,28 @@ function renderScheduleResult(result) {
       list.appendChild(missing);
     }
 
-    const note = document.createElement("p");
-    note.className = "hint";
-    const unlockInfo = settings.busBufferMinutes > 0 ? ` (+${settings.busBufferMinutes} min de battement)` : "";
-    note.textContent = `Bloques en salle avant ${bus.arrivalTime}${unlockInfo}.`;
-
-    card.append(head, list, note);
+    card.append(head, list);
     els.busStrip.appendChild(card);
   }
 
   // Metrics bar
   els.metricsBar.replaceChildren();
   const metricItems = [
-    ["Creneaux", String(stats.totalSlots)],
-    ["Postes pourvus", `${stats.filledSeats}/${stats.totalSeats}`],
-    ["Ecart de charge", `${stats.spread} creneau(x)`],
-    ["Enchainements", String(stats.backToBackCount)]
+    ["Créneaux", String(stats.totalSlots)],
+    ["Postes", `${stats.filledSeats}/${stats.totalSeats}`],
+    ["Écart max", `${stats.spread} cr.`],
+    ["Enchaînements", String(stats.backToBackCount)]
   ];
   for (const [label, val] of metricItems) {
-    const span = document.createElement("span");
-    span.textContent = `${label} : `;
+    const item = document.createElement("div");
+    item.className = "metric-item";
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = label;
     const strong = document.createElement("span");
     strong.className = "metric-val";
     strong.textContent = val;
-    span.appendChild(strong);
-    els.metricsBar.appendChild(span);
+    item.append(labelSpan, strong);
+    els.metricsBar.appendChild(item);
   }
 
   // Schedule table header
@@ -398,13 +486,17 @@ function renderScheduleResult(result) {
   const headRow = document.createElement("tr");
   const cornerTh = document.createElement("th");
   cornerTh.scope = "col";
-  cornerTh.textContent = "Creneau";
+  cornerTh.textContent = "Horaire";
   headRow.appendChild(cornerTh);
 
   for (const role of roles) {
     const th = document.createElement("th");
     th.scope = "col";
-    th.textContent = `${role.name} (${role.countPerSlot})`;
+    th.textContent = role.name;
+    const badge = document.createElement("span");
+    badge.className = "role-cap-badge";
+    badge.textContent = `×${role.countPerSlot}`;
+    th.appendChild(badge);
     headRow.appendChild(th);
   }
   els.scheduleThead.appendChild(headRow);
@@ -419,7 +511,7 @@ function renderScheduleResult(result) {
     if (slot.isPartial) {
       const tag = document.createElement("span");
       tag.className = "slot-partial-tag";
-      tag.textContent = `${slot.duration} min`;
+      tag.textContent = `${slot.duration}m`;
       rowTh.appendChild(tag);
     }
     tr.appendChild(rowTh);
@@ -432,15 +524,14 @@ function renderScheduleResult(result) {
 
       const occupants = slot.assignments[role.id] ?? [];
       for (const person of occupants) {
-        const chip = document.createElement("span");
         if (person) {
-          chip.className = "member-chip";
-          chip.textContent = person.name;
+          wrap.appendChild(createMemberChip(person));
         } else {
-          chip.className = "member-chip member-chip-empty";
-          chip.textContent = "Non pourvu";
+          const emptyChip = document.createElement("span");
+          emptyChip.className = "member-chip member-chip-empty";
+          emptyChip.textContent = "Non pourvu";
+          wrap.appendChild(emptyChip);
         }
-        wrap.appendChild(chip);
       }
       td.appendChild(wrap);
       tr.appendChild(td);
@@ -450,10 +541,26 @@ function renderScheduleResult(result) {
 
   // Member summary
   els.summaryGrid.replaceChildren();
-  const sortedSummary = [...memberSummary].sort((a, b) => b.totalDuties - a.totalDuties || a.name.localeCompare(b.name));
+  const sortedSummary = [...memberSummary].sort(
+    (a, b) => b.totalDuties - a.totalDuties || a.name.localeCompare(b.name)
+  );
   for (const item of sortedSummary) {
     const card = document.createElement("article");
     card.className = "summary-card";
+    card.dataset.memberId = item.id;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Filtrer les créneaux de ${item.name}`);
+    if (state.highlightedMemberId && state.highlightedMemberId === item.id) {
+      card.classList.add("is-highlighted");
+    }
+    card.addEventListener("click", () => setHighlightedMember(item.id));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setHighlightedMember(item.id);
+      }
+    });
 
     const head = document.createElement("div");
     head.className = "summary-card-head";
@@ -462,26 +569,26 @@ function renderScheduleResult(result) {
     nameEl.textContent = item.name;
     const countEl = document.createElement("span");
     countEl.className = "summary-count";
-    countEl.textContent = `${item.totalDuties} mission(s)`;
+    countEl.textContent = `${item.totalDuties}`;
     head.append(nameEl, countEl);
 
     const list = document.createElement("ul");
     list.className = "summary-shifts";
     if (item.busNumber) {
       const li = document.createElement("li");
-      li.textContent = `Bus ${item.busNumber} (arrivee ${item.busArrivalTime})`;
+      li.textContent = `Bus ${item.busNumber} (${item.busArrivalTime})`;
       li.style.fontWeight = "600";
       li.style.color = "var(--primary)";
       list.appendChild(li);
     }
     for (const sh of item.shifts) {
       const li = document.createElement("li");
-      li.textContent = `${sh.slotLabel} : ${sh.roleName}`;
+      li.textContent = `${sh.slotLabel} · ${sh.roleName}`;
       list.appendChild(li);
     }
     if (!item.busNumber && item.shifts.length === 0) {
       const li = document.createElement("li");
-      li.textContent = "Aucun staff attribue";
+      li.textContent = "Aucun créneau";
       list.appendChild(li);
     }
 
@@ -554,7 +661,6 @@ function setSessionPassword(value) {
 
 function sbHeaders(anonKey) {
   const headers = { apikey: anonKey, "Content-Type": "application/json" };
-  // Legacy anon keys are JWTs; new sb_publishable_ keys must not go in Authorization.
   if (anonKey.startsWith("eyJ")) headers.Authorization = `Bearer ${anonKey}`;
   return headers;
 }
@@ -579,7 +685,7 @@ async function publishOnline({ url, anonKey }, password) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(supabaseErrorMessage("Publication refusee", res.status, body));
+    throw new Error(supabaseErrorMessage("Publication refusée", res.status, body));
   }
 }
 
@@ -601,13 +707,13 @@ async function handlePublish() {
     openSyncDialog("Renseignez la connexion Supabase et le mot de passe BDE.");
     return;
   }
-  setStatus("Publication en cours...");
+  setStatus("Publication...");
   try {
     await publishOnline(sb, password);
-    setStatus("Planning publie en ligne");
-    if (els.syncDialog.open) els.sbFeedback.textContent = "Publie. Tout le BDE voit maintenant ce planning.";
+    setStatus("Publié en ligne");
+    if (els.syncDialog.open) els.sbFeedback.textContent = "Planning publié en ligne.";
   } catch (err) {
-    setStatus("Echec de publication");
+    setStatus("Échec publication");
     openSyncDialog(err.message);
   }
 }
@@ -619,7 +725,56 @@ function applyLoadedConfig() {
   renderRoles();
 }
 
+function wireSidebarTabs() {
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+  const activateTab = (tab, moveFocus = false) => {
+    for (const t of tabs) {
+      const selected = t === tab;
+      t.setAttribute("aria-selected", String(selected));
+      t.tabIndex = selected ? 0 : -1;
+      const panelId = t.getAttribute("aria-controls");
+      const panel = document.getElementById(panelId);
+      if (panel) panel.hidden = !selected;
+    }
+    if (moveFocus) tab.focus();
+  };
+
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => activateTab(tab, false));
+    tab.addEventListener("keydown", (e) => {
+      const idx = tabs.indexOf(tab);
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        activateTab(tabs[(idx + 1) % tabs.length], true);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        activateTab(tabs[(idx - 1 + tabs.length) % tabs.length], true);
+      }
+    });
+  }
+}
+
+function wireDialogLightDismiss() {
+  // Fallback for browsers without native <dialog closedby="any"> support (modern-web-guidance: light-dismiss-a-dialog)
+  if (!("closedBy" in HTMLDialogElement.prototype)) {
+    els.syncDialog.addEventListener("click", (event) => {
+      if (event.target !== els.syncDialog) return;
+      const rect = els.syncDialog.getBoundingClientRect();
+      const isDialogContent =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+      if (isDialogContent) return;
+      els.syncDialog.close();
+    });
+  }
+}
+
 function wireEvents() {
+  wireSidebarTabs();
+  wireDialogLightDismiss();
+
   els.settingsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!validateSettingsForm()) return;
@@ -629,28 +784,32 @@ function wireEvents() {
     runAndRenderSchedule();
   });
 
-  // Validate on blur after edit, clear on input
-  for (const input of els.settingsForm.querySelectorAll("input")) {
+  for (const input of els.settingsForm.querySelectorAll("input, select")) {
     input.addEventListener("input", () => {
-      input.removeAttribute("aria-invalid");
-      const errEl = document.getElementById(`${input.id}-error`);
-      if (errEl) errEl.textContent = "";
+      syncFieldValidity(input, false, false);
     });
     input.addEventListener("blur", () => {
       if (input.value && !input.checkValidity()) {
-        input.setAttribute("aria-invalid", "true");
+        syncFieldValidity(input, true, true);
       }
     });
+    if (input.tagName === "SELECT") {
+      input.addEventListener("change", () => runAndRenderSchedule());
+    }
   }
-
-  els.generateHeaderBtn.addEventListener("click", () => {
-    els.settingsForm.requestSubmit();
-  });
 
   els.rerollBtn.addEventListener("click", () => {
     state.seed = Date.now() + Math.floor(Math.random() * 10000);
     runAndRenderSchedule();
   });
+
+  if (els.memberFilter) {
+    els.memberFilter.addEventListener("change", () => {
+      const val = els.memberFilter.value;
+      state.highlightedMemberId = "";
+      setHighlightedMember(val);
+    });
+  }
 
   els.exportCsvBtn.addEventListener("click", exportScheduleCsv);
 
@@ -662,7 +821,7 @@ function wireEvents() {
       els.newMemberName.focus();
       return;
     }
-    els.newMemberName.removeAttribute("aria-invalid");
+    els.newMemberName.setAttribute("aria-invalid", "false");
     state.config.members.push({
       id: `m-${Date.now().toString(36)}`,
       name,
@@ -684,7 +843,7 @@ function wireEvents() {
       els.newRoleName.focus();
       return;
     }
-    els.newRoleName.removeAttribute("aria-invalid");
+    els.newRoleName.setAttribute("aria-invalid", "false");
     state.config.roles.push({
       id: `r-${Date.now().toString(36)}`,
       name,
@@ -714,7 +873,7 @@ function wireEvents() {
       applyLoadedConfig();
       await persistConfig();
       runAndRenderSchedule();
-      els.sbFeedback.textContent = "Configuration importee. Pensez a publier en ligne.";
+      els.sbFeedback.textContent = "Configuration importée.";
     } catch (err) {
       els.sbFeedback.textContent = err.message;
     } finally {
@@ -726,10 +885,10 @@ function wireEvents() {
     const sb = { url: normalizeSupabaseUrl(els.sbUrl.value), anonKey: els.sbKey.value.trim() };
     try {
       const online = await fetchOnlineState(sb);
-      if (!online) throw new Error("Aucune donnee publiee pour l'instant.");
+      if (!online) throw new Error("Aucune donnée publiée pour l'instant.");
       safeWriteLocal(SB_SETTINGS_KEY, sb);
       loadOnline(online);
-      els.sbFeedback.textContent = "Donnees en ligne rechargees.";
+      els.sbFeedback.textContent = "Données en ligne rechargées.";
     } catch (err) {
       els.sbFeedback.textContent = err.message;
     }
@@ -741,7 +900,7 @@ function wireEvents() {
     const anonKey = els.sbKey.value.trim();
     const password = els.sbPassword.value;
     if (!isSupabaseProjectUrl(url) || !anonKey || !password) {
-      els.sbFeedback.textContent = "URL au format https://xxxx.supabase.co, cle anon et mot de passe requis.";
+      els.sbFeedback.textContent = "URL https://xxxx.supabase.co, clé anon et mot de passe requis.";
       return;
     }
     els.sbUrl.value = url;
@@ -761,11 +920,11 @@ function loadOnline(online) {
     els.diagnostics.replaceChildren();
     renderScheduleResult(online.schedule);
     const when = new Date(online.updated_at).toLocaleString("fr-FR");
-    els.scheduleSubtitle.textContent += ` . Planning officiel publie le ${when}`;
+    els.scheduleSubtitle.textContent += ` · Publié le ${when}`;
   } else {
     runAndRenderSchedule();
   }
-  setStatus("Synchronise en ligne");
+  setStatus("Synchronisé en ligne");
 }
 
 async function init() {
@@ -776,28 +935,28 @@ async function init() {
     const repoConfig = await fetchRepoConfig();
     state.config = isLocalhost ? repoConfig : local ?? repoConfig;
     if (!state.config.supabase) state.config.supabase = repoConfig.supabase;
-    setStatus(isLocalhost ? "Connecte a data/config.json" : "Charge depuis le site");
+    setStatus(isLocalhost ? "Local (config.json)" : "Prêt");
   } catch {
     if (!local) {
-      setStatus("Erreur de chargement config.json");
+      setStatus("Erreur config.json");
       return;
     }
     state.config = local;
-    setStatus("Charge depuis navigateur");
+    setStatus("Mode navigateur");
   }
 
   const sb = getSupabaseSettings();
   if (sb.url && sb.anonKey) {
-    setStatus("Chargement en ligne...");
+    setStatus("Synchronisation...");
     try {
       const online = await fetchOnlineState(sb);
       if (online) {
         loadOnline(online);
         return;
       }
-      setStatus("Rien de publie en ligne");
+      setStatus("Local (rien en ligne)");
     } catch {
-      setStatus("Hors ligne, donnees locales");
+      setStatus("Hors ligne");
     }
   }
 
