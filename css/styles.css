@@ -176,17 +176,7 @@
     margin-inline: auto;
   }
 
-  /* ---------- Écran de connexion ---------- */
-  html[data-auth="locked"] .site-header,
-  html[data-auth="locked"] main,
-  html[data-auth="locked"] .site-footer {
-    display: none;
-  }
-
-  html[data-auth="ok"] .login-gate {
-    display: none;
-  }
-
+  /* ---------- Page de connexion (login.html) ---------- */
   .login-gate {
     min-height: 100vh;
     display: grid;

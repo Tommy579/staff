@@ -64,11 +64,7 @@ const els = {
   sbPassword: document.getElementById("sb-password"),
   sbFeedback: document.getElementById("sb-feedback"),
   sbReloadBtn: document.getElementById("sb-reload-btn"),
-  sbLogoutBtn: document.getElementById("sb-logout-btn"),
-  loginForm: document.getElementById("login-form"),
-  loginPassword: document.getElementById("login-password"),
-  loginFeedback: document.getElementById("login-feedback"),
-  loginSubmitBtn: document.getElementById("login-submit-btn")
+  sbLogoutBtn: document.getElementById("sb-logout-btn")
 };
 
 let autoPublishTimer = null;
@@ -746,7 +742,6 @@ function setSavedPassword(value) {
 
 function updateAuthUi() {
   const loggedIn = Boolean(getSavedPassword());
-  document.documentElement.dataset.auth = loggedIn ? "ok" : "locked";
   if (els.openSyncBtn) {
     els.openSyncBtn.textContent = loggedIn ? "Connecté BDE" : "Connexion BDE";
   }
@@ -820,9 +815,7 @@ function scheduleAutoPublish() {
       .catch((err) => {
         if (/mot de passe/i.test(err.message)) {
           setSavedPassword("");
-          updateAuthUi();
-          setStatus("Mot de passe requis");
-          openSyncDialog(err.message);
+          location.replace("./login.html");
         } else {
           setStatus("Échec synchronisation");
         }
@@ -978,65 +971,8 @@ function wireEvents() {
 
   els.sbLogoutBtn.addEventListener("click", () => {
     setSavedPassword("");
-    els.sbPassword.value = "";
-    if (els.loginPassword) els.loginPassword.value = "";
-    if (els.loginFeedback) els.loginFeedback.textContent = "";
-    els.syncDialog.close();
-    updateAuthUi();
-    setStatus("Déconnecté");
+    location.replace("./login.html");
   });
-
-  if (els.loginForm) {
-    els.loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const password = els.loginPassword.value;
-      if (!password) {
-        els.loginPassword.setAttribute("aria-invalid", "true");
-        els.loginFeedback.textContent = "Entrez le mot de passe BDE.";
-        els.loginPassword.focus();
-        return;
-      }
-      els.loginPassword.setAttribute("aria-invalid", "false");
-      els.loginSubmitBtn.disabled = true;
-      els.loginFeedback.textContent = "Vérification...";
-
-      try {
-        // Ensure we have base config before verifying against Supabase
-        if (!state.config) {
-          state.config = safeReadLocal(CONFIG_STORAGE_KEY) || (await fetchRepoConfig());
-        }
-        const sb = getSupabaseSettings();
-        if (!sb.url || !sb.anonKey) {
-          throw new Error("Configuration Supabase manquante.");
-        }
-
-        // Fetch existing online state first so logging in on a new device never overwrites published data
-        const online = await fetchOnlineState(sb).catch(() => null);
-        const cfgToCheck = online?.config ?? state.config;
-        const schedToCheck = online?.schedule ?? state.lastResult;
-
-        await publishOnline(sb, password, cfgToCheck, schedToCheck);
-        setSavedPassword(password);
-        updateAuthUi();
-        els.loginFeedback.textContent = "";
-
-        if (online) {
-          loadOnline(online);
-        } else {
-          applyLoadedConfig();
-          runAndRenderSchedule();
-          setStatus("Synchronisé en ligne");
-        }
-      } catch (err) {
-        setSavedPassword("");
-        updateAuthUi();
-        els.loginFeedback.textContent = err.message;
-        els.loginPassword.focus();
-      } finally {
-        els.loginSubmitBtn.disabled = false;
-      }
-    });
-  }
 
   els.importJsonInput.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];

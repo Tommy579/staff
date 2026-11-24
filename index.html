@@ -22,35 +22,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/styles.css">
   <script>
-    document.documentElement.dataset.auth = document.cookie.split("; ").some(function (c) {
+    if (!document.cookie.split("; ").some(function (c) {
       return c.indexOf("bde_staff_auto_pwd=") === 0 && c.length > "bde_staff_auto_pwd=".length;
-    }) ? "ok" : "locked";
+    })) {
+      location.replace("./login.html");
+    }
   </script>
 </head>
 <body>
-  <!-- Full-screen login gate when no session cookie is present -->
-  <section id="login-gate" class="login-gate" aria-labelledby="login-title">
-    <div class="login-card">
-      <div class="login-brand">
-        <img class="brand-mark" src="./assets/logo-bde.svg" alt="Logo BDE Polytech Nice Sophia" width="44" height="44">
-        <div>
-          <h1 id="login-title" class="login-title">Staff Auto</h1>
-          <p class="hint">BDE Polytech Nice Sophia</p>
-        </div>
-      </div>
-
-      <form id="login-form" class="login-form" novalidate>
-        <div class="field">
-          <label for="login-password">Mot de passe BDE</label>
-          <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Entrez le mot de passe" aria-invalid="false">
-        </div>
-        <p id="login-feedback" class="hint login-error" role="status" aria-live="polite"></p>
-        <button id="login-submit-btn" type="submit" class="btn btn-primary w-full">Accéder au planning</button>
-      </form>
-      <p class="hint login-note">Connexion mémorisée 30 jours sur ce navigateur.</p>
-    </div>
-  </section>
-
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
