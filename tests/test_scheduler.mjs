@@ -118,4 +118,22 @@ for (const slot of tResult.schedule) {
   }
 }
 
-console.log("OK: All scheduler constraints verified (8 slots, 2 buses, 0 repeats, 0 early bus conflicts, per-member transport).");
+// 7. Check custom changeover mode ("customChanges" sorted across midnight)
+const customResult = generateSchedule({
+  settings: {
+    ...config.settings,
+    slotMode: "custom",
+    customChanges: ["01:30", "23:00", "00:15"]
+  },
+  members: config.members,
+  roles: config.roles,
+  seed: 42
+});
+
+assert.equal(customResult.schedule.length, 4, "3 custom changeovers = 4 slots");
+assert.equal(customResult.schedule[0].label, "22:00 - 23:00");
+assert.equal(customResult.schedule[1].label, "23:00 - 00:15");
+assert.equal(customResult.schedule[2].label, "00:15 - 01:30");
+assert.equal(customResult.schedule[3].label, "01:30 - 04:00");
+
+console.log("OK: All scheduler constraints verified (8 fixed slots, 4 custom slots, 2 buses, 0 repeats, 0 early bus conflicts, per-member transport).");

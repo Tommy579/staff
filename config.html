@@ -64,7 +64,7 @@
               Membres <span id="members-count" class="tab-badge">0</span>
             </button>
             <button type="button" role="tab" id="tab-btn-roles" aria-selected="false" aria-controls="tab-panel-roles" class="tab-btn" tabindex="-1">
-              Pôles <span id="roles-count" class="tab-badge">0</span>
+              Staffs <span id="roles-count" class="tab-badge">0</span>
             </button>
           </div>
 
@@ -79,7 +79,7 @@
                   <span class="field-error" id="event-name-error">Indiquez un nom de soirée.</span>
                 </div>
 
-                <div class="form-row form-row-times">
+                <div class="form-row">
                   <div class="field">
                     <label for="start-time">Début</label>
                     <input id="start-time" name="startTime" type="time" required data-error="start-time-error" aria-invalid="false">
@@ -90,11 +90,28 @@
                     <input id="end-time" name="endTime" type="time" required data-error="end-time-error" aria-invalid="false">
                     <span class="field-error" id="end-time-error">Heure de fin requise.</span>
                   </div>
-                  <div class="field">
-                    <label for="slot-duration" title="Durée d'un créneau en minutes">Créneau</label>
-                    <input id="slot-duration" name="slotDuration" type="number" min="10" max="240" step="5" required data-error="slot-duration-error" aria-invalid="false">
-                    <span class="field-error" id="slot-duration-error">Entre 10 et 240 min.</span>
+                </div>
+
+                <div class="field">
+                  <label for="slot-mode">Durée des staffs</label>
+                  <div class="form-row">
+                    <select id="slot-mode" name="slotMode" aria-label="Mode de durée des staffs">
+                      <option value="fixed">Fixe</option>
+                      <option value="custom">Personnalisé</option>
+                    </select>
+                    <div id="slot-duration-wrap">
+                      <input id="slot-duration" name="slotDuration" type="number" min="10" max="240" step="5" required aria-label="Durée des staffs en minutes" data-error="slot-duration-error" aria-invalid="false">
+                      <span class="field-error" id="slot-duration-error">Entre 10 et 240 min.</span>
+                    </div>
                   </div>
+                </div>
+
+                <div id="custom-changes-wrap" class="custom-changes-wrap" hidden>
+                  <div class="custom-changes-add">
+                    <input id="new-change-time" type="time" aria-label="Horaire du changement de staff">
+                    <button id="add-change-btn" type="button" class="btn btn-secondary btn-sm">+ Changement</button>
+                  </div>
+                  <ul id="custom-changes-list" class="changes-list"></ul>
                 </div>
               </div>
 
@@ -164,19 +181,19 @@
 
           <!-- Panel 3: Roles -->
           <section id="tab-panel-roles" role="tabpanel" aria-labelledby="tab-btn-roles" class="tab-panel" hidden>
-            <h2 id="roles-heading" class="visually-hidden">Pôles de staff</h2>
+            <h2 id="roles-heading" class="visually-hidden">Staffs</h2>
             <form id="add-role-form" class="inline-add-role" novalidate>
               <div class="field">
-                <label for="new-role-name" class="visually-hidden">Nom du pôle</label>
-                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau pôle (ex. Vestiaire)" required maxlength="50" aria-invalid="false">
+                <label for="new-role-name" class="visually-hidden">Nom du staff</label>
+                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau staff (ex. Vestiaire)" required maxlength="50" aria-invalid="false">
               </div>
               <div class="field">
                 <label for="new-role-count" class="visually-hidden">Nombre de places</label>
-                <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places par créneau" aria-invalid="false">
+                <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places" aria-invalid="false">
               </div>
               <button type="submit" class="btn btn-secondary">Ajouter</button>
             </form>
-            <p class="hint">Nombre de staffeurs requis par créneau pour chaque pôle.</p>
+            <p class="hint">Nombre de staffeurs requis pour chaque staff.</p>
             <ul id="roles-list" class="roster-list"></ul>
           </section>
         </div>
@@ -212,7 +229,7 @@
 
           <div tabindex="0" role="region" aria-labelledby="schedule-caption" class="table-wrapper">
             <table id="schedule-table" class="schedule-table">
-              <caption id="schedule-caption" class="visually-hidden">Répartition des créneaux par pôle de staff</caption>
+              <caption id="schedule-caption" class="visually-hidden">Répartition des horaires par staff</caption>
               <thead id="schedule-thead"></thead>
               <tbody id="schedule-tbody"></tbody>
             </table>

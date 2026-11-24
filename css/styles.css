@@ -791,6 +791,48 @@
     background-color: var(--danger-bg);
   }
 
+  .custom-changes-wrap[hidden] {
+    display: none;
+  }
+
+  .custom-changes-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+  }
+
+  .custom-changes-add {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .changes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .change-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.1rem 0.2rem 0.1rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-2);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .change-chip .icon-btn {
+    width: 24px;
+    height: 24px;
+  }
+
   /* Options avancées repliables */
   .advanced-details {
     margin-block-start: var(--space-3);

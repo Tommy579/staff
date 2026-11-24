@@ -96,15 +96,60 @@ function shuffleInPlace(arr, rng) {
 }
 
 /**
- * Builds the time slots for the evening.
+ * Sorts and deduplicates custom changeover times ("HH:MM") in ascending chronological order
+ * relative to the party start/end window.
+ * @param {string} startTime
+ * @param {string} endTime
+ * @param {string[]} times
+ * @returns {string[]}
  */
-export function buildTimeSlots(startTime, endTime, slotDuration) {
+export function sortCustomChangeTimes(startTime, endTime, times) {
   const startMin = parseTimeToMinutes(startTime);
   const totalDuration = toRelativeOffset(startMin, endTime, { allowPreStart: false });
+  const uniqueOffsets = new Map();
+  for (const t of times ?? []) {
+    if (typeof t !== "string" || !/^\d{2}:\d{2}$/.test(t)) continue;
+    const offset = toRelativeOffset(startMin, t, { allowPreStart: false });
+    if (offset > 0 && offset < totalDuration && !uniqueOffsets.has(offset)) {
+      uniqueOffsets.set(offset, formatOffsetTime(startMin, offset));
+    }
+  }
+  return [...uniqueOffsets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, hhmm]) => hhmm);
+}
+
+/**
+ * Builds the time slots for the evening (fixed duration or custom changeover times).
+ */
+export function buildTimeSlots(startTime, endTime, slotDuration, options = {}) {
+  const startMin = parseTimeToMinutes(startTime);
+  const totalDuration = toRelativeOffset(startMin, endTime, { allowPreStart: false });
+  const slotMode = options.slotMode === "custom" ? "custom" : "fixed";
+
+  if (slotMode === "custom") {
+    const sortedTimes = sortCustomChangeTimes(startTime, endTime, options.customChanges ?? []);
+    const boundaries = [0, ...sortedTimes.map((t) => toRelativeOffset(startMin, t, { allowPreStart: false })), totalDuration];
+    const slots = [];
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const startOffset = boundaries[i];
+      const endOffset = boundaries[i + 1];
+      slots.push({
+        index: i,
+        startOffset,
+        endOffset,
+        duration: endOffset - startOffset,
+        isPartial: false,
+        label: `${formatOffsetTime(startMin, startOffset)} - ${formatOffsetTime(startMin, endOffset)}`
+      });
+    }
+    return { startMin, totalDuration, slots, slotMode, customChanges: sortedTimes };
+  }
+
   const duration = Number(slotDuration);
 
   if (!Number.isInteger(duration) || duration < 10 || duration > 240) {
-    throw new Error("La durée d'un staff doit être comprise entre 10 et 240 minutes.");
+    throw new Error("La durée des staffs doit être comprise entre 10 et 240 minutes.");
   }
 
   const slots = [];
@@ -125,7 +170,7 @@ export function buildTimeSlots(startTime, endTime, slotDuration) {
     index += 1;
   }
 
-  return { startMin, totalDuration, slots };
+  return { startMin, totalDuration, slots, slotMode: "fixed", customChanges: [] };
 }
 
 /**
@@ -145,15 +190,19 @@ export function generateSchedule(input) {
   const roles = (input?.roles ?? []).filter((r) => r && r.name?.trim() && Number(r.countPerSlot) > 0);
 
   if (roles.length === 0) {
-    throw new Error("Ajoutez au moins un pôle de staff avec au moins 1 personne par créneau.");
+    throw new Error("Ajoutez au moins un staff avec au moins 1 personne par rotation.");
   }
 
   const busStaffCount = Math.max(1, Number(settings.busStaffCount ?? 2));
   const busBufferMinutes = Math.max(0, Number(settings.busBufferMinutes ?? 0));
-  const { startMin, totalDuration, slots } = buildTimeSlots(
+  const { startMin, totalDuration, slots, slotMode, customChanges } = buildTimeSlots(
     settings.startTime,
     settings.endTime,
-    settings.slotDuration ?? 45
+    settings.slotDuration ?? 45,
+    {
+      slotMode: settings.slotMode,
+      customChanges: settings.customChanges
+    }
   );
 
   const bus1Offset = toRelativeOffset(startMin, settings.bus1Arrival, { allowPreStart: true });
@@ -162,10 +211,10 @@ export function generateSchedule(input) {
   const warnings = [];
   const errors = [];
 
-  if (totalDuration % Number(settings.slotDuration ?? 45) !== 0) {
+  if (slotMode === "fixed" && totalDuration % Number(settings.slotDuration ?? 45) !== 0) {
     const last = slots[slots.length - 1];
     warnings.push(
-      `La durée totale (${totalDuration} min) n'est pas divisible par ${settings.slotDuration} min. Le dernier créneau (${last.label}) dure ${last.duration} min.`
+      `La durée totale (${totalDuration} min) n'est pas divisible par ${settings.slotDuration} min. La dernière rotation (${last.label}) dure ${last.duration} min.`
     );
   }
 
@@ -391,7 +440,7 @@ export function generateSchedule(input) {
   });
 
   return {
-    settings: { ...settings, totalDuration, busStaffCount, busBufferMinutes },
+    settings: { ...settings, totalDuration, busStaffCount, busBufferMinutes, slotMode, customChanges },
     roles: roles.map((r) => ({ ...r, countPerSlot: Number(r.countPerSlot) })),
     buses,
     schedule,

@@ -1,4 +1,4 @@
-import { generateSchedule } from "./scheduler.js";
+import { generateSchedule, sortCustomChangeTimes } from "./scheduler.js";
 import { buildXlsxWorkbook } from "./xlsx.js";
 import {
   normalizeSupabaseUrl,
@@ -25,7 +25,13 @@ const els = {
   eventName: document.getElementById("event-name"),
   startTime: document.getElementById("start-time"),
   endTime: document.getElementById("end-time"),
+  slotMode: document.getElementById("slot-mode"),
+  slotDurationWrap: document.getElementById("slot-duration-wrap"),
   slotDuration: document.getElementById("slot-duration"),
+  customChangesWrap: document.getElementById("custom-changes-wrap"),
+  newChangeTime: document.getElementById("new-change-time"),
+  addChangeBtn: document.getElementById("add-change-btn"),
+  customChangesList: document.getElementById("custom-changes-list"),
   bus1Arrival: document.getElementById("bus1-arrival"),
   bus2Arrival: document.getElementById("bus2-arrival"),
   busStaffCount: document.getElementById("bus-staff-count"),
@@ -161,12 +167,44 @@ async function persistConfig() {
   setStatus("Sauvegarde locale");
 }
 
+function renderCustomChanges() {
+  if (!els.customChangesList) return;
+  const s = state.config.settings;
+  const sorted = sortCustomChangeTimes(s.startTime || "22:00", s.endTime || "04:00", s.customChanges ?? []);
+  s.customChanges = sorted;
+
+  els.customChangesList.replaceChildren();
+  for (const hhmm of sorted) {
+    const li = document.createElement("li");
+    li.className = "change-chip";
+    const span = document.createElement("span");
+    span.textContent = hhmm;
+    const removeBtn = createRemoveButton(`Retirer le changement de ${hhmm}`, async () => {
+      state.config.settings.customChanges = (state.config.settings.customChanges ?? []).filter((t) => t !== hhmm);
+      renderCustomChanges();
+      await saveAndAutoPublish();
+    });
+    li.append(span, removeBtn);
+    els.customChangesList.appendChild(li);
+  }
+}
+
+function updateSlotModeUi() {
+  const isCustom = els.slotMode?.value === "custom";
+  if (els.slotDurationWrap) els.slotDurationWrap.hidden = isCustom;
+  if (els.customChangesWrap) els.customChangesWrap.hidden = !isCustom;
+  if (els.slotDuration) els.slotDuration.required = !isCustom;
+}
+
 function populateSettingsForm() {
   const s = state.config.settings;
   els.eventName.value = s.eventName ?? "";
   els.startTime.value = s.startTime ?? "22:00";
   els.endTime.value = s.endTime ?? "04:00";
+  if (els.slotMode) els.slotMode.value = s.slotMode === "custom" ? "custom" : "fixed";
   els.slotDuration.value = s.slotDuration ?? 45;
+  updateSlotModeUi();
+  renderCustomChanges();
   els.bus1Arrival.value = s.bus1Arrival ?? "22:30";
   els.bus2Arrival.value = s.bus2Arrival ?? "23:15";
   els.busStaffCount.value = s.busStaffCount ?? 2;
@@ -174,12 +212,17 @@ function populateSettingsForm() {
 }
 
 function syncSettingsFromForm() {
+  const startTime = els.startTime.value;
+  const endTime = els.endTime.value;
+  const slotMode = els.slotMode?.value === "custom" ? "custom" : "fixed";
   state.config.settings = {
     ...state.config.settings,
     eventName: els.eventName.value.trim(),
-    startTime: els.startTime.value,
-    endTime: els.endTime.value,
-    slotDuration: Number(els.slotDuration.value),
+    startTime,
+    endTime,
+    slotMode,
+    slotDuration: Number(els.slotDuration.value) || 45,
+    customChanges: sortCustomChangeTimes(startTime, endTime, state.config.settings.customChanges ?? []),
     bus1Arrival: els.bus1Arrival.value,
     bus2Arrival: els.bus2Arrival.value,
     busStaffCount: Number(els.busStaffCount.value),
@@ -340,7 +383,7 @@ function renderRoles() {
       await saveAndAutoPublish();
     });
 
-    const removeBtn = createRemoveButton(`Retirer le pôle ${role.name}`, async () => {
+    const removeBtn = createRemoveButton(`Retirer le staff ${role.name}`, async () => {
       state.config.roles = state.config.roles.filter((r) => r.id !== role.id);
       renderRoles();
       await saveAndAutoPublish();
@@ -399,7 +442,7 @@ function validateSettingsForm() {
     els.eventName,
     els.startTime,
     els.endTime,
-    els.slotDuration,
+    ...(els.slotMode?.value === "custom" ? [] : [els.slotDuration]),
     els.bus1Arrival,
     els.bus2Arrival
   ];
@@ -471,7 +514,11 @@ function runAndRenderSchedule() {
 
 function renderScheduleResult(result) {
   const { settings, roles, buses, schedule, memberSummary, stats, warnings, errors } = result;
-  els.scheduleSubtitle.textContent = `${settings.eventName} · ${settings.startTime} – ${settings.endTime} · créneaux de ${settings.slotDuration} min`;
+  const durationInfo =
+    settings.slotMode === "custom"
+      ? "changements personnalisés"
+      : `staffs de ${settings.slotDuration} min`;
+  els.scheduleSubtitle.textContent = `${settings.eventName} · ${settings.startTime} – ${settings.endTime} · ${durationInfo}`;
   const totalSlots = schedule.length;
 
   for (const err of errors) {
@@ -518,7 +565,7 @@ function renderScheduleResult(result) {
   els.metricsBar.replaceChildren();
   const metricItems = [
     ["Postes pourvus", `${stats.filledSeats}/${stats.totalSeats}`, stats.filledSeats < stats.totalSeats ? "bad" : ""],
-    ["Créneaux", String(stats.totalSlots ?? totalSlots), ""],
+    ["Rotations", String(stats.totalSlots ?? totalSlots), ""],
     ["Écart max", `${stats.spread}`, ""],
     ["Enchaînements", String(stats.backToBackCount), stats.backToBackCount > 0 ? "warn" : ""]
   ];
@@ -856,9 +903,39 @@ function wireEvents() {
     e.preventDefault();
     if (!validateSettingsForm()) return;
     syncSettingsFromForm();
+    renderCustomChanges();
     state.seed = Date.now();
     await saveAndAutoPublish();
   });
+
+  if (els.slotMode) {
+    els.slotMode.addEventListener("change", async () => {
+      updateSlotModeUi();
+      syncSettingsFromForm();
+      renderCustomChanges();
+      await saveAndAutoPublish();
+    });
+  }
+
+  if (els.addChangeBtn && els.newChangeTime) {
+    els.addChangeBtn.addEventListener("click", async () => {
+      const val = els.newChangeTime.value;
+      if (!val) {
+        els.newChangeTime.focus();
+        return;
+      }
+      const s = state.config.settings;
+      const next = sortCustomChangeTimes(
+        els.startTime.value || s.startTime,
+        els.endTime.value || s.endTime,
+        [...(s.customChanges ?? []), val]
+      );
+      s.customChanges = next;
+      els.newChangeTime.value = "";
+      renderCustomChanges();
+      await saveAndAutoPublish();
+    });
+  }
 
   for (const input of els.settingsForm.querySelectorAll("input, select")) {
     input.addEventListener("input", () => {
@@ -869,7 +946,7 @@ function wireEvents() {
         syncFieldValidity(input, true, true);
       }
     });
-    if (input.tagName === "SELECT") {
+    if (input.tagName === "SELECT" && input !== els.slotMode) {
       input.addEventListener("change", () => saveAndAutoPublish());
     }
   }
