@@ -1,4 +1,5 @@
 import { generateSchedule } from "./scheduler.js";
+import { buildXlsxWorkbook } from "./xlsx.js";
 import {
   normalizeSupabaseUrl,
   isSupabaseProjectUrl,
@@ -35,7 +36,7 @@ const els = {
   bus2Select2: document.getElementById("bus2-select-2"),
   generateHeaderBtn: document.getElementById("generate-header-btn"),
   rerollBtn: document.getElementById("reroll-btn"),
-  exportCsvBtn: document.getElementById("export-csv-btn"),
+  exportXlsxBtn: document.getElementById("export-xlsx-btn"),
   memberFilter: document.getElementById("member-filter"),
   addMemberForm: document.getElementById("add-member-form"),
   newMemberName: document.getElementById("new-member-name"),
@@ -668,29 +669,53 @@ function renderScheduleResult(result) {
   }
 }
 
-function exportScheduleCsv() {
+function exportScheduleXlsx() {
   if (!state.lastResult) return;
-  const { roles, buses, schedule } = state.lastResult;
-  const escapeCsv = (val) => `"${String(val).replace(/"/g, '""')}"`;
+  const { settings, roles, buses, schedule, memberSummary } = state.lastResult;
 
-  const lines = [];
-  lines.push(["Type", "Horaire", ...roles.map((r) => r.name)].map(escapeCsv).join(";"));
-  for (const bus of buses) {
-    const names = bus.members.map((m) => m.name).join(", ");
-    lines.push([bus.label, bus.arrivalTime, names].map(escapeCsv).join(";"));
-  }
-  for (const slot of schedule) {
-    const cols = roles.map((r) =>
-      (slot.assignments[r.id] ?? []).map((m) => (m ? m.name : "Non pourvu")).join(", ")
-    );
-    lines.push(["Creneau", slot.label, ...cols].map(escapeCsv).join(";"));
-  }
+  const planningRows = [
+    ["Type", "Horaire", ...roles.map((r) => `${r.name} (×${r.countPerSlot})`)],
+    ...buses.map((bus) => [
+      bus.label,
+      bus.arrivalTime,
+      bus.members.map((m) => m.name).join(", ")
+    ]),
+    ...schedule.map((slot) => [
+      "Créneau",
+      slot.label,
+      ...roles.map((r) =>
+        (slot.assignments[r.id] ?? []).map((m) => (m ? m.name : "Non pourvu")).join(", ")
+      )
+    ])
+  ];
 
-  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const memberRows = [
+    ["Staffeur", "Arrivée", "Affectations", "Détail des créneaux"],
+    ...memberSummary.map((item) => {
+      const arrival = item.busNumber
+        ? `Staff Bus ${item.busNumber} (${item.busArrivalTime})`
+        : item.transport === "bus1"
+          ? `Bus 1 (${settings.bus1Arrival})`
+          : item.transport === "bus2"
+            ? `Bus 2 (${settings.bus2Arrival})`
+            : `Voiture (dès ${settings.startTime})`;
+      const detail = item.shifts.map((s) => `${s.slotLabel} : ${s.roleName}`).join(" | ") || "Aucun créneau";
+      return [item.name, arrival, item.totalDuties, detail];
+    })
+  ];
+
+  const xlsxBytes = buildXlsxWorkbook([
+    { name: "Planning", rows: planningRows },
+    { name: "Staffeurs", rows: memberRows }
+  ]);
+
+  const blob = new Blob([xlsxBytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "planning-staff-bde.csv";
+  a.download = "planning-staff-bde.xlsx";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -921,7 +946,7 @@ function wireEvents() {
     });
   }
 
-  els.exportCsvBtn.addEventListener("click", exportScheduleCsv);
+  els.exportXlsxBtn.addEventListener("click", exportScheduleXlsx);
 
   els.addMemberForm.addEventListener("submit", async (e) => {
     e.preventDefault();
