@@ -590,6 +590,10 @@
     box-shadow: var(--shadow-sm);
   }
 
+  .sidebar-card {
+    overflow-x: hidden;
+  }
+
   .panel {
     padding: var(--space-5);
   }
@@ -1642,15 +1646,28 @@
     }
 
     input[type="time"] {
-      min-height: 38px;
-      padding: 0 0.45rem;
+      -webkit-appearance: none;
+      appearance: none;
+      display: block;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 36px;
+      padding: 0 0.4rem;
       font-size: 0.8125rem;
+      line-height: 34px;
+    }
+
+    input[type="time"]::-webkit-date-and-time-value {
+      text-align: left;
+      margin: 0;
     }
 
     input[type="time"]::-webkit-calendar-picker-indicator {
-      width: 14px;
+      width: 12px;
+      height: 12px;
       padding: 0;
-      margin-inline-start: 0;
+      margin: 0;
     }
 
     .icon-btn {
