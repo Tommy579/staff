@@ -108,6 +108,10 @@ const els = {
   addRoleEvents: Array.from(document.querySelectorAll("#add-role-events .role-event-pill[data-event-type]")),
   rolesList: document.getElementById("roles-list"),
   rolesCount: document.getElementById("roles-count"),
+  rolesActiveSummary: document.getElementById("roles-active-summary"),
+  presetRolesSummary: document.getElementById("preset-roles-summary"),
+  gotoRolesTabBtn: document.getElementById("goto-roles-tab-btn"),
+  tabBtnRoles: document.getElementById("tab-btn-roles"),
   diagnostics: document.getElementById("diagnostics-container"),
   busStrip: document.getElementById("bus-strip"),
   metricsBar: document.getElementById("metrics-bar"),
@@ -300,6 +304,11 @@ function syncSettingsFromForm() {
 
 async function applyEventTypePreset(presetKey) {
   const type = normalizeEventType(presetKey);
+  const currentType = normalizeEventType(state.config.settings.eventType);
+  if (type === currentType) {
+    updatePresetButtons(type);
+    return;
+  }
   const preset = EVENT_TYPE_PRESETS[type];
   state.config.settings = {
     ...state.config.settings,
@@ -469,13 +478,35 @@ function syncAddRoleEventsUi(selectedTypes) {
 function renderRoles() {
   const roles = state.config.roles;
   const currentType = normalizeEventType(state.config.settings.eventType);
-  const activeCount = roles.filter((r) => getRoleEventTypes(r).includes(currentType)).length;
-  els.rolesCount.textContent = activeCount === roles.length ? String(roles.length) : `${activeCount}/${roles.length}`;
-  els.rolesList.replaceChildren();
+  const currentLabel = EVENT_TYPE_PRESETS[currentType].label;
+  const activeRoles = [];
+  const inactiveRoles = [];
 
   for (const role of roles) {
+    if (getRoleEventTypes(role).includes(currentType)) {
+      activeRoles.push(role);
+    } else {
+      inactiveRoles.push(role);
+    }
+  }
+
+  const activeCount = activeRoles.length;
+  const activeSeats = activeRoles.reduce((sum, r) => sum + (Number(r.countPerSlot) || 0), 0);
+  els.rolesCount.textContent = activeCount === roles.length ? String(roles.length) : `${activeCount}/${roles.length}`;
+
+  const summaryText = `${activeCount} staff${activeCount > 1 ? "s" : ""} · ${activeSeats} place${activeSeats > 1 ? "s" : ""}/rotation`;
+  if (els.rolesActiveSummary) {
+    els.rolesActiveSummary.textContent = summaryText;
+  }
+  if (els.presetRolesSummary) {
+    els.presetRolesSummary.textContent = `${currentLabel} : ${summaryText}`;
+  }
+
+  els.rolesList.replaceChildren();
+
+  const appendRoleItem = (role, isActiveForCurrent) => {
     const roleEventTypes = getRoleEventTypes(role);
-    const isActiveForCurrent = roleEventTypes.includes(currentType);
+    const hasNoEvent = roleEventTypes.length === 0;
 
     const li = document.createElement("li");
     li.className = `roster-item role-item${isActiveForCurrent ? "" : " is-inactive-for-event"}`;
@@ -483,9 +514,31 @@ function renderRoles() {
     const mainRow = document.createElement("div");
     mainRow.className = "role-item-main";
 
+    const titleGroup = document.createElement("div");
+    titleGroup.className = "role-title-group";
+
     const nameSpan = document.createElement("span");
     nameSpan.className = "roster-name";
     nameSpan.textContent = role.name;
+    titleGroup.appendChild(nameSpan);
+
+    if (hasNoEvent) {
+      const warnTag = document.createElement("span");
+      warnTag.className = "role-status-tag role-status-tag-warn";
+      warnTag.textContent = "Aucun évènement";
+      titleGroup.appendChild(warnTag);
+    } else if (!isActiveForCurrent) {
+      const offTag = document.createElement("span");
+      offTag.className = "role-status-tag";
+      offTag.textContent = `Hors ${currentLabel}`;
+      titleGroup.appendChild(offTag);
+    }
+
+    const countWrap = document.createElement("label");
+    countWrap.className = "role-count-wrap";
+    const multSpan = document.createElement("span");
+    multSpan.setAttribute("aria-hidden", "true");
+    multSpan.textContent = "×";
 
     const countInput = document.createElement("input");
     countInput.type = "number";
@@ -493,14 +546,17 @@ function renderRoles() {
     countInput.max = "10";
     countInput.value = String(role.countPerSlot);
     countInput.className = "role-count-input";
-    countInput.setAttribute("aria-label", `Places par créneau pour ${role.name}`);
+    countInput.setAttribute("aria-label", `Places par rotation pour ${role.name}`);
     countInput.setAttribute("aria-invalid", "false");
     countInput.addEventListener("change", async () => {
       const next = Math.max(1, Math.min(10, Number(countInput.value) || 1));
       role.countPerSlot = next;
       countInput.value = String(next);
+      renderRoles();
       await saveAndAutoPublish();
     });
+
+    countWrap.append(multSpan, countInput);
 
     const removeBtn = createRemoveButton(`Retirer le staff ${role.name}`, async () => {
       state.config.roles = state.config.roles.filter((r) => r.id !== role.id);
@@ -508,19 +564,22 @@ function renderRoles() {
       await saveAndAutoPublish();
     });
 
-    mainRow.append(nameSpan, countInput, removeBtn);
+    mainRow.append(titleGroup, countWrap, removeBtn);
 
     const eventsRow = document.createElement("div");
     eventsRow.className = "role-events";
     eventsRow.setAttribute("role", "group");
-    eventsRow.setAttribute("aria-label", `Évènements pour ${role.name}`);
+    eventsRow.setAttribute("aria-label", `Évènements associés à ${role.name}`);
 
     for (const type of EVENT_TYPE_ORDER) {
+      const typeLabel = EVENT_TYPE_PRESETS[type].label;
+      const isPressed = roleEventTypes.includes(type);
       const pill = document.createElement("button");
       pill.type = "button";
-      pill.className = "role-event-pill";
-      pill.textContent = EVENT_TYPE_PRESETS[type].label;
-      pill.setAttribute("aria-pressed", String(roleEventTypes.includes(type)));
+      pill.className = `role-event-pill${type === currentType ? " is-current-event" : ""}`;
+      pill.textContent = typeLabel;
+      pill.setAttribute("aria-label", `${typeLabel} (${role.name})`);
+      pill.setAttribute("aria-pressed", String(isPressed));
       pill.addEventListener("click", async () => {
         const current = getRoleEventTypes(role);
         const next = current.includes(type)
@@ -535,6 +594,22 @@ function renderRoles() {
 
     li.append(mainRow, eventsRow);
     els.rolesList.appendChild(li);
+  };
+
+  for (const role of activeRoles) {
+    appendRoleItem(role, true);
+  }
+
+  if (inactiveRoles.length > 0) {
+    const divider = document.createElement("li");
+    divider.className = "role-group-divider";
+    divider.setAttribute("role", "presentation");
+    divider.textContent = `Non inclus dans ${currentLabel} (${inactiveRoles.length})`;
+    els.rolesList.appendChild(divider);
+
+    for (const role of inactiveRoles) {
+      appendRoleItem(role, false);
+    }
   }
 }
 
@@ -1046,6 +1121,13 @@ function wireEvents() {
 
   for (const btn of els.presetButtons) {
     btn.addEventListener("click", () => applyEventTypePreset(btn.dataset.preset));
+  }
+
+  if (els.gotoRolesTabBtn && els.tabBtnRoles) {
+    els.gotoRolesTabBtn.addEventListener("click", () => {
+      els.tabBtnRoles.click();
+      els.tabBtnRoles.focus();
+    });
   }
 
   els.settingsForm.addEventListener("submit", async (e) => {

@@ -74,12 +74,16 @@
             <form id="settings-form" aria-labelledby="config-heading" novalidate>
               <div class="form-group">
                 <div class="field">
-                  <span class="field-label" id="event-type-label">Type de soirée</span>
+                  <span class="field-label" id="event-type-label">Type d'évènement</span>
                   <div class="preset-bar" role="group" aria-labelledby="event-type-label">
                     <button type="button" class="preset-btn" data-preset="soiree" aria-pressed="true">Soirée</button>
                     <button type="button" class="preset-btn" data-preset="ob" aria-pressed="false">OB</button>
                     <button type="button" class="preset-btn" data-preset="wec" aria-pressed="false">WEC</button>
                     <button type="button" class="preset-btn" data-preset="ski" aria-pressed="false">Ski</button>
+                  </div>
+                  <div class="preset-summary">
+                    <span id="preset-roles-summary" class="hint"></span>
+                    <button type="button" id="goto-roles-tab-btn" class="link-btn">Gérer les staffs</button>
                   </div>
                 </div>
 
@@ -121,7 +125,7 @@
                     <input id="new-change-time" type="time" aria-label="Horaire du changement de staff">
                     <button id="add-change-btn" type="button" class="btn btn-secondary btn-sm">+ Changement</button>
                   </div>
-                  <ul id="custom-changes-list" class="changes-list"></ul>
+                  <ul id="custom-changes-list" class="changes-list" role="list"></ul>
                 </div>
               </div>
 
@@ -186,31 +190,50 @@
               <button type="submit" class="btn btn-secondary">Ajouter</button>
             </form>
             <p class="hint">Présents : <strong id="members-count">0</strong> · Décochez les absents et choisissez le moyen d'arrivée (voiture = dès le début).</p>
-            <ul id="members-list" class="roster-list"></ul>
+            <ul id="members-list" class="roster-list" role="list"></ul>
           </section>
 
           <!-- Panel 3: Roles -->
           <section id="tab-panel-roles" role="tabpanel" aria-labelledby="tab-btn-roles" class="tab-panel" hidden>
             <h2 id="roles-heading" class="visually-hidden">Staffs</h2>
-            <form id="add-role-form" class="inline-add-role" novalidate>
-              <div class="field">
-                <label for="new-role-name" class="visually-hidden">Nom du staff</label>
-                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau staff (ex. Ronde)" required maxlength="50" aria-invalid="false">
+
+            <div class="roles-context-bar" aria-live="polite">
+              <div class="roles-context-head">
+                <span class="roles-context-label">Filtre actif</span>
+                <span id="roles-active-summary" class="roles-context-metrics"></span>
               </div>
-              <div class="field">
-                <label for="new-role-count" class="visually-hidden">Nombre de places</label>
-                <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places" aria-invalid="false">
+              <div class="preset-bar preset-bar-compact" role="group" aria-label="Changer le type d'évènement actif">
+                <button type="button" class="preset-btn" data-preset="soiree" aria-pressed="true">Soirée</button>
+                <button type="button" class="preset-btn" data-preset="ob" aria-pressed="false">OB</button>
+                <button type="button" class="preset-btn" data-preset="wec" aria-pressed="false">WEC</button>
+                <button type="button" class="preset-btn" data-preset="ski" aria-pressed="false">Ski</button>
               </div>
-              <button type="submit" class="btn btn-secondary">Ajouter</button>
-            </form>
-            <div id="add-role-events" class="role-events role-events-add" role="group" aria-label="Évènements pour le nouveau staff">
-              <button type="button" class="role-event-pill" data-event-type="soiree" aria-pressed="true">Soirée</button>
-              <button type="button" class="role-event-pill" data-event-type="ob" aria-pressed="false">OB</button>
-              <button type="button" class="role-event-pill" data-event-type="wec" aria-pressed="false">WEC</button>
-              <button type="button" class="role-event-pill" data-event-type="ski" aria-pressed="false">Ski</button>
             </div>
-            <p class="hint">Places par rotation et évènements associés.</p>
-            <ul id="roles-list" class="roster-list"></ul>
+
+            <form id="add-role-form" class="role-add-card" novalidate>
+              <div class="inline-add-role">
+                <div class="field">
+                  <label for="new-role-name" class="visually-hidden">Nom du staff</label>
+                  <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau staff..." required maxlength="50" aria-invalid="false">
+                </div>
+                <div class="field">
+                  <label for="new-role-count" class="visually-hidden">Nombre de places</label>
+                  <input id="new-role-count" name="roleCount" type="number" min="1" max="10" value="1" required aria-label="Nombre de places par rotation" aria-invalid="false">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm">Ajouter</button>
+              </div>
+              <div class="role-add-events-row">
+                <span class="role-add-events-label" id="add-role-events-label">Évènements du nouveau staff</span>
+                <div id="add-role-events" class="role-events" role="group" aria-labelledby="add-role-events-label">
+                  <button type="button" class="role-event-pill" data-event-type="soiree" aria-pressed="true" aria-label="Soirée (nouveau staff)">Soirée</button>
+                  <button type="button" class="role-event-pill" data-event-type="ob" aria-pressed="false" aria-label="OB (nouveau staff)">OB</button>
+                  <button type="button" class="role-event-pill" data-event-type="wec" aria-pressed="false" aria-label="WEC (nouveau staff)">WEC</button>
+                  <button type="button" class="role-event-pill" data-event-type="ski" aria-pressed="false" aria-label="Ski (nouveau staff)">Ski</button>
+                </div>
+              </div>
+            </form>
+
+            <ul id="roles-list" class="roster-list roles-roster-list" role="list"></ul>
           </section>
         </div>
       </aside>

@@ -3,18 +3,24 @@
     {
       "id": "r-bar",
       "name": "Bar",
-      "countPerSlot": 4,
+      "eventTypes": [
+        "soiree",
+        "ob",
+        "wec",
+        "ski"
+      ],
+      "countPerSlot": 4
+    },
+    {
+      "id": "r-vestiaire",
+      "name": "Vestiaire",
+      "countPerSlot": 2,
       "eventTypes": [
         "soiree",
         "ob",
         "wec",
         "ski"
       ]
-    },
-    {
-      "id": "r-vestiaire",
-      "name": "Vestiaire",
-      "countPerSlot": 2
     },
     {
       "id": "r-mwuwxrp4",
@@ -39,11 +45,11 @@
     {
       "id": "r-mwwd0woo",
       "name": "ronde",
-      "countPerSlot": 1,
       "eventTypes": [
         "wec",
         "ski"
-      ]
+      ],
+      "countPerSlot": 1
     }
   ],
   "members": [
