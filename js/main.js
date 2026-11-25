@@ -10,6 +10,59 @@ const CONFIG_STORAGE_KEY = "bde_staff_auto_config_v1";
 const SB_SETTINGS_KEY = "bde_staff_auto_sb_v1";
 const SB_PASSWORD_COOKIE = "bde_staff_auto_pwd";
 const SB_COOKIE_DAYS = 30;
+const DEFAULT_EVENT_TYPE = "soiree";
+const EVENT_TYPE_ORDER = ["soiree", "ob", "wec", "ski"];
+
+const EVENT_TYPE_PRESETS = {
+  soiree: {
+    label: "Soirée",
+    eventName: "Soiree Integration Polytech",
+    startTime: "22:00",
+    endTime: "04:00",
+    slotMode: "fixed",
+    slotDuration: 45,
+    bus1Arrival: "22:30",
+    bus2Arrival: "23:15",
+    busStaffCount: 2,
+    busBufferMinutes: 0
+  },
+  ob: {
+    label: "OB",
+    eventName: "Open Bar BDE",
+    startTime: "20:00",
+    endTime: "01:00",
+    slotMode: "fixed",
+    slotDuration: 30,
+    bus1Arrival: "20:15",
+    bus2Arrival: "21:00",
+    busStaffCount: 2,
+    busBufferMinutes: 0
+  },
+  wec: {
+    label: "WEC",
+    eventName: "WEC Polytech",
+    startTime: "21:00",
+    endTime: "03:00",
+    slotMode: "fixed",
+    slotDuration: 45,
+    bus1Arrival: "21:00",
+    bus2Arrival: "21:30",
+    busStaffCount: 2,
+    busBufferMinutes: 0
+  },
+  ski: {
+    label: "Ski",
+    eventName: "Semaine Ski Polytech",
+    startTime: "21:30",
+    endTime: "02:30",
+    slotMode: "fixed",
+    slotDuration: 45,
+    bus1Arrival: "21:30",
+    bus2Arrival: "22:00",
+    busStaffCount: 2,
+    busBufferMinutes: 0
+  }
+};
 
 const state = {
   config: null,
@@ -22,6 +75,7 @@ const state = {
 const els = {
   status: document.getElementById("persistence-status"),
   settingsForm: document.getElementById("settings-form"),
+  presetButtons: Array.from(document.querySelectorAll(".preset-btn[data-preset]")),
   eventName: document.getElementById("event-name"),
   startTime: document.getElementById("start-time"),
   endTime: document.getElementById("end-time"),
@@ -51,6 +105,7 @@ const els = {
   addRoleForm: document.getElementById("add-role-form"),
   newRoleName: document.getElementById("new-role-name"),
   newRoleCount: document.getElementById("new-role-count"),
+  addRoleEvents: Array.from(document.querySelectorAll("#add-role-events .role-event-pill[data-event-type]")),
   rolesList: document.getElementById("roles-list"),
   rolesCount: document.getElementById("roles-count"),
   diagnostics: document.getElementById("diagnostics-container"),
@@ -196,8 +251,20 @@ function updateSlotModeUi() {
   if (els.slotDuration) els.slotDuration.required = !isCustom;
 }
 
+function normalizeEventType(value) {
+  return Object.hasOwn(EVENT_TYPE_PRESETS, value) ? value : DEFAULT_EVENT_TYPE;
+}
+
+function updatePresetButtons(eventType) {
+  const activeType = normalizeEventType(eventType);
+  for (const btn of els.presetButtons) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.preset === activeType));
+  }
+}
+
 function populateSettingsForm() {
   const s = state.config.settings;
+  updatePresetButtons(s.eventType);
   els.eventName.value = s.eventName ?? "";
   els.startTime.value = s.startTime ?? "22:00";
   els.endTime.value = s.endTime ?? "04:00";
@@ -217,6 +284,7 @@ function syncSettingsFromForm() {
   const slotMode = els.slotMode?.value === "custom" ? "custom" : "fixed";
   state.config.settings = {
     ...state.config.settings,
+    eventType: normalizeEventType(state.config.settings.eventType),
     eventName: els.eventName.value.trim(),
     startTime,
     endTime,
@@ -228,6 +296,33 @@ function syncSettingsFromForm() {
     busStaffCount: Number(els.busStaffCount.value),
     busBufferMinutes: Number(els.busBuffer.value)
   };
+}
+
+async function applyEventTypePreset(presetKey) {
+  const type = normalizeEventType(presetKey);
+  const preset = EVENT_TYPE_PRESETS[type];
+  state.config.settings = {
+    ...state.config.settings,
+    eventType: type,
+    eventName: preset.eventName,
+    startTime: preset.startTime,
+    endTime: preset.endTime,
+    slotMode: preset.slotMode,
+    slotDuration: preset.slotDuration,
+    customChanges: [],
+    bus1Arrival: preset.bus1Arrival,
+    bus2Arrival: preset.bus2Arrival,
+    busStaffCount: preset.busStaffCount,
+    busBufferMinutes: preset.busBufferMinutes
+  };
+  populateSettingsForm();
+  for (const input of els.settingsForm.querySelectorAll("input, select")) {
+    syncFieldValidity(input, false, false);
+  }
+  syncAddRoleEventsUi([type]);
+  renderRoles();
+  state.seed = Date.now();
+  await saveAndAutoPublish();
 }
 
 function populateBusSelectors() {
@@ -359,14 +454,34 @@ function renderMembers() {
   }
 }
 
+function getRoleEventTypes(role) {
+  if (!Array.isArray(role.eventTypes)) return [...EVENT_TYPE_ORDER];
+  return EVENT_TYPE_ORDER.filter((type) => role.eventTypes.includes(type));
+}
+
+function syncAddRoleEventsUi(selectedTypes) {
+  const activeSet = new Set(selectedTypes);
+  for (const btn of els.addRoleEvents) {
+    btn.setAttribute("aria-pressed", String(activeSet.has(btn.dataset.eventType)));
+  }
+}
+
 function renderRoles() {
   const roles = state.config.roles;
-  els.rolesCount.textContent = String(roles.length);
+  const currentType = normalizeEventType(state.config.settings.eventType);
+  const activeCount = roles.filter((r) => getRoleEventTypes(r).includes(currentType)).length;
+  els.rolesCount.textContent = activeCount === roles.length ? String(roles.length) : `${activeCount}/${roles.length}`;
   els.rolesList.replaceChildren();
 
   for (const role of roles) {
+    const roleEventTypes = getRoleEventTypes(role);
+    const isActiveForCurrent = roleEventTypes.includes(currentType);
+
     const li = document.createElement("li");
-    li.className = "roster-item";
+    li.className = `roster-item role-item${isActiveForCurrent ? "" : " is-inactive-for-event"}`;
+
+    const mainRow = document.createElement("div");
+    mainRow.className = "role-item-main";
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "roster-name";
@@ -393,7 +508,32 @@ function renderRoles() {
       await saveAndAutoPublish();
     });
 
-    li.append(nameSpan, countInput, removeBtn);
+    mainRow.append(nameSpan, countInput, removeBtn);
+
+    const eventsRow = document.createElement("div");
+    eventsRow.className = "role-events";
+    eventsRow.setAttribute("role", "group");
+    eventsRow.setAttribute("aria-label", `Évènements pour ${role.name}`);
+
+    for (const type of EVENT_TYPE_ORDER) {
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "role-event-pill";
+      pill.textContent = EVENT_TYPE_PRESETS[type].label;
+      pill.setAttribute("aria-pressed", String(roleEventTypes.includes(type)));
+      pill.addEventListener("click", async () => {
+        const current = getRoleEventTypes(role);
+        const next = current.includes(type)
+          ? current.filter((t) => t !== type)
+          : [...current, type];
+        role.eventTypes = EVENT_TYPE_ORDER.filter((t) => next.includes(t));
+        renderRoles();
+        await saveAndAutoPublish();
+      });
+      eventsRow.appendChild(pill);
+    }
+
+    li.append(mainRow, eventsRow);
     els.rolesList.appendChild(li);
   }
 }
@@ -848,6 +988,7 @@ async function saveAndAutoPublish() {
 
 function applyLoadedConfig() {
   populateSettingsForm();
+  syncAddRoleEventsUi([normalizeEventType(state.config.settings.eventType)]);
   populateBusSelectors();
   renderMembers();
   renderRoles();
@@ -902,6 +1043,10 @@ function wireDialogLightDismiss() {
 function wireEvents() {
   wireSidebarTabs();
   wireDialogLightDismiss();
+
+  for (const btn of els.presetButtons) {
+    btn.addEventListener("click", () => applyEventTypePreset(btn.dataset.preset));
+  }
 
   els.settingsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -991,6 +1136,13 @@ function wireEvents() {
     await saveAndAutoPublish();
   });
 
+  for (const btn of els.addRoleEvents) {
+    btn.addEventListener("click", () => {
+      const pressed = btn.getAttribute("aria-pressed") === "true";
+      btn.setAttribute("aria-pressed", String(!pressed));
+    });
+  }
+
   els.addRoleForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = els.newRoleName.value.trim();
@@ -1001,13 +1153,21 @@ function wireEvents() {
       return;
     }
     els.newRoleName.setAttribute("aria-invalid", "false");
+    const currentType = normalizeEventType(state.config.settings.eventType);
+    const selectedEvents = els.addRoleEvents
+      .filter((btn) => btn.getAttribute("aria-pressed") === "true")
+      .map((btn) => btn.dataset.eventType);
+    const eventTypes = selectedEvents.length > 0 ? selectedEvents : [currentType];
+
     state.config.roles.push({
       id: `r-${Date.now().toString(36)}`,
       name,
-      countPerSlot
+      countPerSlot,
+      eventTypes
     });
     els.newRoleName.value = "";
     els.newRoleCount.value = "1";
+    syncAddRoleEventsUi([currentType]);
     renderRoles();
     await saveAndAutoPublish();
   });

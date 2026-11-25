@@ -74,6 +74,16 @@
             <form id="settings-form" aria-labelledby="config-heading" novalidate>
               <div class="form-group">
                 <div class="field">
+                  <span class="field-label" id="event-type-label">Type de soirée</span>
+                  <div class="preset-bar" role="group" aria-labelledby="event-type-label">
+                    <button type="button" class="preset-btn" data-preset="soiree" aria-pressed="true">Soirée</button>
+                    <button type="button" class="preset-btn" data-preset="ob" aria-pressed="false">OB</button>
+                    <button type="button" class="preset-btn" data-preset="wec" aria-pressed="false">WEC</button>
+                    <button type="button" class="preset-btn" data-preset="ski" aria-pressed="false">Ski</button>
+                  </div>
+                </div>
+
+                <div class="field">
                   <label for="event-name">Nom de la soirée</label>
                   <input id="event-name" name="eventName" type="text" required maxlength="80" data-error="event-name-error" aria-invalid="false">
                   <span class="field-error" id="event-name-error">Indiquez un nom de soirée.</span>
@@ -185,7 +195,7 @@
             <form id="add-role-form" class="inline-add-role" novalidate>
               <div class="field">
                 <label for="new-role-name" class="visually-hidden">Nom du staff</label>
-                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau staff (ex. Vestiaire)" required maxlength="50" aria-invalid="false">
+                <input id="new-role-name" name="roleName" type="text" placeholder="Nouveau staff (ex. Ronde)" required maxlength="50" aria-invalid="false">
               </div>
               <div class="field">
                 <label for="new-role-count" class="visually-hidden">Nombre de places</label>
@@ -193,7 +203,13 @@
               </div>
               <button type="submit" class="btn btn-secondary">Ajouter</button>
             </form>
-            <p class="hint">Nombre de staffeurs requis pour chaque staff.</p>
+            <div id="add-role-events" class="role-events role-events-add" role="group" aria-label="Évènements pour le nouveau staff">
+              <button type="button" class="role-event-pill" data-event-type="soiree" aria-pressed="true">Soirée</button>
+              <button type="button" class="role-event-pill" data-event-type="ob" aria-pressed="false">OB</button>
+              <button type="button" class="role-event-pill" data-event-type="wec" aria-pressed="false">WEC</button>
+              <button type="button" class="role-event-pill" data-event-type="ski" aria-pressed="false">Ski</button>
+            </div>
+            <p class="hint">Places par rotation et évènements associés.</p>
             <ul id="roles-list" class="roster-list"></ul>
           </section>
         </div>

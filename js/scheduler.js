@@ -186,8 +186,13 @@ export function buildTimeSlots(startTime, endTime, slotDuration, options = {}) {
  */
 export function generateSchedule(input) {
   const settings = input?.settings ?? {};
+  const eventType = typeof settings.eventType === "string" && settings.eventType ? settings.eventType : "soiree";
   const activeMembers = (input?.members ?? []).filter((m) => m && m.active !== false && m.name?.trim());
-  const roles = (input?.roles ?? []).filter((r) => r && r.name?.trim() && Number(r.countPerSlot) > 0);
+  const roles = (input?.roles ?? []).filter((r) => {
+    if (!r || !r.name?.trim() || Number(r.countPerSlot) <= 0) return false;
+    if (!Array.isArray(r.eventTypes)) return true;
+    return r.eventTypes.includes(eventType);
+  });
 
   if (roles.length === 0) {
     throw new Error("Ajoutez au moins un staff avec au moins 1 personne par rotation.");

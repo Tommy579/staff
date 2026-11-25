@@ -136,4 +136,21 @@ assert.equal(customResult.schedule[1].label, "23:00 - 00:15");
 assert.equal(customResult.schedule[2].label, "00:15 - 01:30");
 assert.equal(customResult.schedule[3].label, "01:30 - 04:00");
 
-console.log("OK: All scheduler constraints verified (8 fixed slots, 4 custom slots, 2 buses, 0 repeats, 0 early bus conflicts, per-member transport).");
+// 8. Check eventType filtering on roles (e.g. "ronde" only in wec and ski)
+const soireeRoles = generateSchedule({
+  settings: { ...config.settings, eventType: "soiree" },
+  members: config.members,
+  roles: config.roles,
+  seed: 42
+}).roles.map((r) => r.name);
+assert.equal(soireeRoles.includes("ronde"), false, "ronde must not be scheduled for soiree");
+
+const wecRoles = generateSchedule({
+  settings: { ...config.settings, eventType: "wec" },
+  members: config.members,
+  roles: config.roles,
+  seed: 42
+}).roles.map((r) => r.name);
+assert.equal(wecRoles.includes("ronde"), true, "ronde must be scheduled for wec");
+
+console.log("OK: All scheduler constraints verified (8 fixed slots, 4 custom slots, 2 buses, 0 repeats, 0 early bus conflicts, per-member transport, eventType role filtering).");

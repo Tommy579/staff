@@ -1,139 +1,382 @@
 {
-  "version": 1,
-  "association": "BDE Polytech Nice Sophia",
-  "supabase": { "url": "https://wqayghhkgbprvofojjoo.supabase.co", "anonKey": "sb_publishable_0e3xM9OIJfMfRW04Lhnc5A_0Q8HI9aa" },
-  "settings": {
-    "eventName": "Soiree Integration Polytech",
-    "startTime": "22:00",
-    "endTime": "04:00",
-    "slotDuration": 45,
-    "bus1Arrival": "22:30",
-    "bus2Arrival": "23:15",
-    "busStaffCount": 2,
-    "busBufferMinutes": 0
-  },
-  "members": [
-    {
-      "id": "m-1",
-      "name": "Camille Laurent",
-      "active": true
-    },
-    {
-      "id": "m-2",
-      "name": "Lucas Moreau",
-      "active": true
-    },
-    {
-      "id": "m-3",
-      "name": "Ines Benali",
-      "active": true
-    },
-    {
-      "id": "m-4",
-      "name": "Theo Bernard",
-      "active": true
-    },
-    {
-      "id": "m-5",
-      "name": "Manon Petit",
-      "active": true
-    },
-    {
-      "id": "m-6",
-      "name": "Hugo Garnier",
-      "active": true
-    },
-    {
-      "id": "m-7",
-      "name": "Chloe Mercier",
-      "active": true
-    },
-    {
-      "id": "m-8",
-      "name": "Nathan Faure",
-      "active": true
-    },
-    {
-      "id": "m-9",
-      "name": "Lea Chevalier",
-      "active": true
-    },
-    {
-      "id": "m-10",
-      "name": "Enzo Girard",
-      "active": true
-    },
-    {
-      "id": "m-11",
-      "name": "Sarah Roux",
-      "active": true
-    },
-    {
-      "id": "m-12",
-      "name": "Baptiste Clement",
-      "active": true
-    },
-    {
-      "id": "m-13",
-      "name": "Juliette Andre",
-      "active": true
-    },
-    {
-      "id": "m-14",
-      "name": "Maxime Lefevre",
-      "active": true
-    },
-    {
-      "id": "m-15",
-      "name": "Clara Perrin",
-      "active": true
-    },
-    {
-      "id": "m-16",
-      "name": "Antoine Blanc",
-      "active": true
-    }
-  ],
   "roles": [
     {
       "id": "r-bar",
       "name": "Bar",
-      "countPerSlot": 2
-    },
-    {
-      "id": "r-entree",
-      "name": "Entree et bracelet",
-      "countPerSlot": 2
+      "countPerSlot": 4,
+      "eventTypes": [
+        "soiree",
+        "ob",
+        "wec",
+        "ski"
+      ]
     },
     {
       "id": "r-vestiaire",
       "name": "Vestiaire",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-mwuwxrp4",
+      "name": "E/S",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-mwuwyknj",
+      "name": "Toilettes",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-mwuzp8n1",
+      "name": "pls",
+      "countPerSlot": 2
+    },
+    {
+      "id": "r-mwuzpsu9",
+      "name": "remplissage",
       "countPerSlot": 1
     },
     {
-      "id": "r-secu",
-      "name": "Prevention et salle",
-      "countPerSlot": 1
-    },
-    {
-      "id": "r-ravit",
-      "name": "Stock et glace",
-      "countPerSlot": 1
-    },
-    {
-      "id": "r-caisse",
-      "name": "Caisse et jetons",
-      "countPerSlot": 1
-    },
-    {
-      "id": "r-eco",
-      "name": "Ecocup et proprete",
-      "countPerSlot": 1
-    },
-    {
-      "id": "r-photo",
-      "name": "Stand photo et accueil",
-      "countPerSlot": 1
+      "id": "r-mwwd0woo",
+      "name": "ronde",
+      "countPerSlot": 1,
+      "eventTypes": [
+        "wec",
+        "ski"
+      ]
     }
-  ]
+  ],
+  "members": [
+    {
+      "id": "m-mwuzgjke",
+      "name": "Alis",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzgr56",
+      "name": "July",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzgtqm",
+      "name": "Ahmed",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzgvuf",
+      "name": "Albin",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzgyll",
+      "name": "Aliette",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzh11o",
+      "name": "Antton",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzh3n7",
+      "name": "Aristide",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhdv1",
+      "name": "Arthur 1",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhffy",
+      "name": "Arthur 2",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhogc",
+      "name": "Arthur Crouhadé",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhr5q",
+      "name": "Baptiste",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhv53",
+      "name": "Carla",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzhy27",
+      "name": "Charlotte",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzi4e3",
+      "name": "Clément",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzi5tq",
+      "name": "Clémence",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzi76h",
+      "name": "Coline",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzi84y",
+      "name": "Daniel",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzidje",
+      "name": "Domi",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzigfq",
+      "name": "Emma",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzihg0",
+      "name": "Ethan",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuziiqp",
+      "name": "Flavio",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzioc5",
+      "name": "Gianni 1",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzipu5",
+      "name": "Gianni 2",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzit0z",
+      "name": "Hugo 1",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuziup3",
+      "name": "Hugo 2",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzivu2",
+      "name": "Jade",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzixo4",
+      "name": "Joséphine",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzj124",
+      "name": "Khaled",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzj302",
+      "name": "Kylian",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzj57p",
+      "name": "Lenny",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzj7gj",
+      "name": "Loenie",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjab3",
+      "name": "Lisa",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjbpo",
+      "name": "Lison",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjd99",
+      "name": "Lucas",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjefq",
+      "name": "Marianne",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjitj",
+      "name": "Matéo",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjkze",
+      "name": "Maxence",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjnrl",
+      "name": "Mehdi",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjpyw",
+      "name": "Nathan",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjryi",
+      "name": "Ninon",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzju8z",
+      "name": "Paulin",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjwny",
+      "name": "Quentin",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjyf0",
+      "name": "Safia",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzjzfe",
+      "name": "Saskia",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzk2ci",
+      "name": "Satine",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzk4w4",
+      "name": "Solène",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzk6n8",
+      "name": "Steven",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzka0x",
+      "name": "Lylla",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzkb5d",
+      "name": "Titou",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzkenl",
+      "name": "Veko",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzkfqu",
+      "name": "Vincent",
+      "active": true,
+      "transport": "car"
+    },
+    {
+      "id": "m-mwuzkjfg",
+      "name": "Youssef",
+      "active": true,
+      "transport": "car"
+    }
+  ],
+  "version": 1,
+  "settings": {
+    "endTime": "04:00",
+    "slotMode": "fixed",
+    "eventName": "Soiree Integration Polytech",
+    "eventType": "soiree",
+    "startTime": "22:00",
+    "bus1Arrival": "22:30",
+    "bus2Arrival": "23:15",
+    "slotDuration": 45,
+    "busStaffCount": 2,
+    "customChanges": [],
+    "busBufferMinutes": 0
+  },
+  "supabase": {
+    "url": "https://wqayghhkgbprvofojjoo.supabase.co",
+    "anonKey": "sb_publishable_0e3xM9OIJfMfRW04Lhnc5A_0Q8HI9aa"
+  },
+  "association": "BDE Polytech Nice Sophia"
 }
